@@ -27,15 +27,60 @@ class ReportGenerator:
     <meta charset="UTF-8">
     <title>{_('report_title')}</title>
     <style>
-        body {{ font-family: sans-serif; background: #f0f0f0; margin: 20px; }}
-        .step {{ background: white; border: 1px solid #ccc; padding: 15px;
-                margin-bottom: 20px; border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-        .step img {{ max-width: 100%; height: auto; border: 1px solid #eee;
-                    margin-top: 10px; display: block; }}
-        .meta {{ color: #666; font-size: 0.9em; margin-bottom: 5px; }}
-        .description {{ font-weight: bold; font-size: 1.1em; }}
-        h1 {{ color: #333; }}
+        :root {{
+            --bg-color: #f0f0f0;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --meta-color: #666666;
+            --border-color: #cccccc;
+            --shadow: rgba(0,0,0,0.1);
+        }}
+
+        @media (prefers-color-scheme: dark) {{
+            :root {{
+                --bg-color: #121212;
+                --card-bg: #1e1e1e;
+                --text-color: #e0e0e0;
+                --meta-color: #b0b0b0;
+                --border-color: #333333;
+                --shadow: rgba(0,0,0,0.5);
+            }}
+        }}
+
+        body {{
+            font-family: sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            margin: 20px;
+            transition: background 0.3s, color 0.3s;
+        }}
+        .step {{
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px var(--shadow);
+        }}
+        .step img {{
+            max-width: 100%;
+            height: auto;
+            border: 1px solid var(--border-color);
+            margin-top: 10px;
+            display: block;
+        }}
+        .meta {{
+            color: var(--meta-color);
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }}
+        .description {{
+            font-weight: bold;
+            font-size: 1.1em;
+        }}
+        h1 {{
+            color: var(--text-color);
+        }}
     </style>
 </head>
 <body>

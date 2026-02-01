@@ -16,3 +16,9 @@ dependencies = [
 [project.scripts]
 wsr = "wsr.main:main"
 wsr-waybar = "wsr.waybar_module:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+wsr = ["locales/*.json"]
