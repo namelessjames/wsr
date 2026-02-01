@@ -68,29 +68,50 @@ def main():
                 time.sleep(1)
             print("Start!")
         except KeyboardInterrupt:
-            # Handle Ctrl+C during countdown specifically if needed, 
-            # though the global handler catches it too. 
-            # Re-raising ensures clean exit if stuck in sleep.
             signal_handler(signal.SIGINT, None)
 
     logger.info("Aufnahme gestartet (Drücke Ctrl+C zum Beenden)...")
     
-    # Initialize Input Manager
     from src.input_manager import InputManager
+    from src.screenshot_engine import ScreenshotEngine
+    from src.report_generator import ReportGenerator
+    
     input_mgr = InputManager()
+    screenshot_engine = ScreenshotEngine()
+    report_gen = ReportGenerator(args.out)
+    
+    captured_events = []
     
     try:
         input_mgr.start()
         
         while True:
-            # Placeholder for main event loop (e.g. processing screenshots later)
-            time.sleep(0.5)
+            while not input_mgr.event_queue.empty():
+                event = input_mgr.event_queue.get()
+                logger.debug(f"Event verarbeitet: {event}")
+                
+                if event['type'] == 'click':
+                    logger.info(f"Klick erkannt. Erstelle Screenshot an {event['x']}, {event['y']}...")
+                    shot = screenshot_engine.capture()
+                    if shot:
+                        shot_with_cursor = screenshot_engine.add_cursor(shot, event['x'], event['y'])
+                        event['screenshot'] = shot_with_cursor
+                    
+                captured_events.append(event)
+
+            time.sleep(0.05)
             
     except KeyboardInterrupt:
-        logger.info("Beende...")
+        logger.info("Aufnahme beendet.")
     finally:
         if 'input_mgr' in locals():
             input_mgr.stop()
+        
+        if captured_events:
+            report_gen.generate(captured_events)
+        else:
+            logger.warning("Keine Ereignisse aufgezeichnet.")
+            
         sys.exit(0)
 
 if __name__ == "__main__":

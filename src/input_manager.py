@@ -3,6 +3,7 @@ import logging
 import threading
 import select
 import time
+import queue
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ class InputManager:
         self.keyboard_devices = []
         self.running = False
         self.thread = None
+        self.event_queue = queue.Queue()
         
         # Virtual mouse position (relative tracking)
         # Assuming 1920x1080 center as start, but this is arbitrary without calibration
@@ -128,15 +130,17 @@ class InputManager:
             self.mouse_x = max(0, min(self.mouse_x, self.screen_width))
             self.mouse_y = max(0, min(self.mouse_y, self.screen_height))
             
-            # Log only occasionally or on specific debug level to avoid spam
-            # logger.debug(f"Maus: {self.mouse_x}, {self.mouse_y}")
-
         # --- Key Press ---
         elif event.type == evdev.ecodes.EV_KEY:
             # event.value: 0=up, 1=down, 2=hold
             if event.value == 1: # Key Down
                 key_name = evdev.ecodes.KEY[event.code] if event.code in evdev.ecodes.KEY else f"UNK_{event.code}"
                 logger.info(f"Taste gedrückt: {key_name} (auf {dev.name})")
+                self.event_queue.put({
+                    'type': 'key',
+                    'key': key_name,
+                    'time': time.time()
+                })
             
             # --- Mouse Click ---
             # Mouse buttons are also EV_KEY
@@ -144,4 +148,11 @@ class InputManager:
                  if event.value == 1:
                     btn_name = evdev.ecodes.BTN[event.code]
                     logger.info(f"Mausklick: {btn_name} bei {self.mouse_x},{self.mouse_y}")
+                    self.event_queue.put({
+                        'type': 'click',
+                        'button': btn_name,
+                        'x': self.mouse_x,
+                        'y': self.mouse_y,
+                        'time': time.time()
+                    })
 
