@@ -13,14 +13,15 @@ class ScreenshotEngine:
 
     def _detect_backend(self):
         """Detects the available screenshot tool based on environment."""
-        if os.environ.get("WAYLAND_DISPLAY"):
-            # Check for grim (wlroots)
-            try:
-                subprocess.run(["grim", "-h"], capture_output=True, check=True)
-                logger.info("Screenshot-Backend erkannt: grim")
-                return "grim"
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                pass
+        # Check for grim (wlroots)
+        try:
+            subprocess.run(["grim", "-h"], capture_output=True, check=True)
+            if not os.environ.get("WAYLAND_DISPLAY"):
+                logger.warning("grim gefunden, aber WAYLAND_DISPLAY ist nicht gesetzt. Screenshots könnten fehlschlagen (nutze sudo -E).")
+            logger.info("Screenshot-Backend erkannt: grim")
+            return "grim"
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
         
         # Fallback to gnome-screenshot if available
         try:
