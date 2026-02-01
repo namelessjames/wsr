@@ -75,13 +75,23 @@ def main():
 
     logger.info("Aufnahme gestartet (Drücke Ctrl+C zum Beenden)...")
     
-    # Main loop (placeholder for Phase 2)
+    # Initialize Input Manager
+    from src.input_manager import InputManager
+    input_mgr = InputManager()
+    
     try:
+        input_mgr.start()
+        
         while True:
-            # Placeholder for event loop
-            time.sleep(0.1)
+            # Placeholder for main event loop (e.g. processing screenshots later)
+            time.sleep(0.5)
+            
     except KeyboardInterrupt:
-        signal_handler(signal.SIGINT, None)
+        logger.info("Beende...")
+    finally:
+        if 'input_mgr' in locals():
+            input_mgr.stop()
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()
