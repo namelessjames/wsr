@@ -5,6 +5,10 @@ import sys
 import os
 import argparse
 
+# Add package dir to path for imports to work when run as script
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from wsr.i18n import _, init_i18n, _instance
+
 def is_wsr_running():
     """Checks if the wsr process is currently running."""
     try:
@@ -24,29 +28,39 @@ def get_status():
             "text": "", 
             "alt": "recording",
             "class": "recording",
-            "tooltip": "WSR: Aufnahme läuft. Klicken zum Beenden."
+            "tooltip": _("tooltip_active")
         }
     else:
         return {
             "text": "",
             "alt": "idle",
             "class": "idle",
-            "tooltip": "WSR: Inaktiv. Klicken zum Starten."
+            "tooltip": _("tooltip_idle")
         }
 
 def toggle_wsr():
     """Starts or stops WSR."""
+    from wsr.i18n import _instance
     if is_wsr_running():
         subprocess.run(["pkill", "-INT", "-f", "wsr.main"])
     else:
-        cmd = "sudo -E wsr -o ~/wsr_report.html > /dev/null 2>&1 &"
+        # Pass the current language to the new process if possible
+        lang_flag = ""
+        if _instance and _instance.lang:
+            lang_flag = f"--lang {_instance.lang}"
+        
+        cmd = f"sudo -E wsr {lang_flag} -o ~/wsr_report.html > /dev/null 2>&1 &"
         subprocess.Popen(["bash", "-c", cmd])
 
 def main():
     parser = argparse.ArgumentParser(description="WSR Waybar Module Helper")
     parser.add_argument("--toggle", action="store_true", help="Toggle recording state")
+    parser.add_argument("--lang", type=str, default=None, help="Language (de, en)")
     
     args = parser.parse_args()
+    
+    # Initialize i18n
+    init_i18n(args.lang)
 
     if args.toggle:
         toggle_wsr()

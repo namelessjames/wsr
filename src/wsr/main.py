@@ -12,6 +12,7 @@ from .screenshot_engine import ScreenshotEngine
 from .report_generator import ReportGenerator
 from .monitor_manager import MonitorManager
 from .key_buffer import KeyBuffer
+from .i18n import _, init_i18n
 
 # Configure logging
 logging.basicConfig(
@@ -26,7 +27,7 @@ def signal_handler(sig, frame):
     """
     Handles SIGINT (Ctrl+C) for a graceful exit.
     """
-    print("\nAbbruch durch Benutzer. Beende...")
+    print(f"\n{_('abort_user')}")
     sys.exit(0)
 
 
@@ -47,7 +48,7 @@ def send_notification(title, message, file_path=None):
                 abs_path = os.path.abspath(file_path)
                 inner_cmd = (
                     f'ACTION=$(notify-send "{title}" "{message}" ' 
-                    f'--action="default=Öffnen" -i info); ' 
+                    f'--action="default={_('gui_open')}" -i info); ' 
                     f'[ "$ACTION" == "default" ] && xdg-open "{abs_path}"'
                 )
                 subprocess.Popen(
@@ -90,7 +91,7 @@ def send_notification(title, message, file_path=None):
             # Use a shell script to catch the action
             inner_cmd = (
                 f'ACTION=$(notify-send "{title}" "{message}" ' 
-                f'--action="default=Öffnen" -i info); ' 
+                f'--action="default={_('gui_open')}" -i info); ' 
                 f'[ "$ACTION" == "default" ] && xdg-open "{abs_path}"'
             )
             subprocess.Popen(
@@ -159,6 +160,13 @@ def parse_arguments():
         help="Zeitintervall in ms, um Tastenanschläge zu gruppieren (Standard: 500)"
     )
 
+    parser.add_argument(
+        "--lang",
+        type=str,
+        default=None,
+        help="Sprache wählen (de, en). Standard: System-Sprache."
+    )
+
     return parser.parse_args()
 
 
@@ -171,16 +179,19 @@ def main():
 
     args = parse_arguments()
 
+    # Initialize i18n
+    init_i18n(args.lang)
+
     # Update logging level based on verbosity
     if args.verbose:
         logger.setLevel(logging.DEBUG)
         logger.debug("Verbose mode activated.")
 
-    logger.info("Initialisiere WSR...")
-    logger.info(f"Ausgabedatei: {args.out}")
+    logger.info(_("initializing"))
+    logger.info(_("output_file", path=args.out))
 
     if args.countdown > 0:
-        logger.info(f"Starte in {args.countdown} Sekunden...")
+        logger.info(_("starting_in", n=args.countdown))
         try:
             for i in range(args.countdown, 0, -1):
                 print(f"{i}...", end=" ", flush=True)
@@ -189,7 +200,7 @@ def main():
         except KeyboardInterrupt:
             signal_handler(signal.SIGINT, None)
 
-    logger.info("Aufnahme gestartet (Drücke Ctrl+C zum Beenden)...")
+    logger.info(_("recording_started"))
 
     monitor_mgr = MonitorManager()
     input_mgr = InputManager()
@@ -201,7 +212,7 @@ def main():
         max_y = max(m['y'] + m['height'] for m in monitor_mgr.monitors)
         input_mgr.screen_width = max_x
         input_mgr.screen_height = max_y
-        logger.info(f"Virtuelle Desktop-Größe: {max_x}x{max_y}")
+        logger.info(_("virtual_desktop_size", width=max_x, height=max_y))
 
     input_mgr.log_keys = not args.no_keys
     screenshot_engine = ScreenshotEngine()
@@ -256,8 +267,7 @@ def main():
                     )
 
                     logger.info(
-                        f"Klick erkannt auf Monitor {mon_name} "
-                        f"bei {rel_x}, {rel_y}..."
+                        _("click_on_monitor", name=mon_name, x=rel_x, y=rel_y)
                     )
                     shot = screenshot_engine.capture(monitor_name=mon_name)
                     if shot:
@@ -273,24 +283,25 @@ def main():
             time.sleep(0.05)
 
     except KeyboardInterrupt:
-        logger.info("Aufnahme beendet.")
+        logger.info(_("recording_stopped"))
     except Exception as e:
-        error_msg = f"Unerwarteter Fehler: {e}"
+        error_msg = _("error_unexpected", error=str(e))
         logger.error(error_msg)
-        send_notification("WSR: Fehler", error_msg)
+        send_notification(_("notif_error_title"), error_msg)
     finally:
         if 'input_mgr' in locals():
             input_mgr.stop()
 
         if captured_events:
+            logger.info(_("generating_report", n=len(captured_events)))
             report_gen.generate(captured_events)
             send_notification(
-                "WSR: Aufnahme abgeschlossen",
-                f"Report gespeichert in {args.out}\nKlicken zum Öffnen",
+                _("notif_success_title"),
+                _("notif_success_message", path=args.out),
                 file_path=args.out
             )
         else:
-            logger.warning("Keine Ereignisse aufgezeichnet.")
+            logger.warning(_("no_events"))
 
         sys.exit(0)
 

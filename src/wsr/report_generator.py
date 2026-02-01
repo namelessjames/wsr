@@ -2,6 +2,7 @@ import base64
 import io
 import logging
 from datetime import datetime
+from .i18n import _
 
 logger = logging.getLogger(__name__)
 
@@ -19,26 +20,26 @@ class ReportGenerator:
             output_path (str): Path where the final HTML will be saved.
         """
         self.output_path = output_path
-        self.header = """
+        self.header = f"""
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>WSR - Wayland Session Record</title>
+    <title>{_('report_title')}</title>
     <style>
-        body { font-family: sans-serif; background: #f0f0f0; margin: 20px; }
-        .step { background: white; border: 1px solid #ccc; padding: 15px;
+        body {{ font-family: sans-serif; background: #f0f0f0; margin: 20px; }}
+        .step {{ background: white; border: 1px solid #ccc; padding: 15px;
                 margin-bottom: 20px; border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .step img { max-width: 100%; height: auto; border: 1px solid #eee;
-                    margin-top: 10px; display: block; }
-        .meta { color: #666; font-size: 0.9em; margin-bottom: 5px; }
-        .description { font-weight: bold; font-size: 1.1em; }
-        h1 { color: #333; }
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        .step img {{ max-width: 100%; height: auto; border: 1px solid #eee;
+                    margin-top: 10px; display: block; }}
+        .meta {{ color: #666; font-size: 0.9em; margin-bottom: 5px; }}
+        .description {{ font-weight: bold; font-size: 1.1em; }}
+        h1 {{ color: #333; }}
     </style>
 </head>
 <body>
-    <h1>WSR Session Record</h1>
+    <h1>{_('report_header')}</h1>
 """
         self.footer = """
     </div>
@@ -64,12 +65,10 @@ class ReportGenerator:
         Args:
             events (list): List of event dictionaries to include in the report.
         """
-        logger.info(f"Generiere Report mit {len(events)} Ereignissen...")
-
         date_str = datetime.now().strftime('%d.%m.%Y %H:%M:%S')
 
         html_parts = [self.header]
-        html_parts.append(f"<p>Aufnahme vom: {date_str}</p>")
+        html_parts.append(f"<p>{_('report_date', date=date_str)}</p>")
         html_parts.append('<div id="steps">')
 
         for event in events:
@@ -78,16 +77,16 @@ class ReportGenerator:
             ).strftime('%H:%M:%S.%f')[:-3]
 
             if event['type'] == 'click':
-                desc = (
-                    f"Mausklick: {event.get('button', 'Unknown')} "
-                    f"bei {event.get('x')}, {event.get('y')}"
-                )
+                desc = _('desc_click', 
+                          button=event.get('button', 'Unknown'),
+                          x=event.get('x'), 
+                          y=event.get('y'))
             elif event['type'] == 'key':
-                desc = f"Taste gedrückt: {event.get('key', 'Unknown')}"
+                desc = _('desc_key', key=event.get('key', 'Unknown'))
             elif event['type'] == 'key_group':
-                desc = f"Tippen: '{event.get('text', '')}'"
+                desc = _('desc_typing', text=event.get('text', ''))
             else:
-                desc = f"Ereignis: {event['type']}"
+                desc = f"{_('Ereignis')}: {event['type']}"
 
             img_tag = ""
             if 'screenshot' in event:
@@ -109,6 +108,6 @@ class ReportGenerator:
         try:
             with open(self.output_path, "w", encoding="utf-8") as f:
                 f.write(final_html)
-            logger.info(f"Report gespeichert unter: {self.output_path}")
+            logger.info(_("report_saved", path=self.output_path))
         except Exception as e:
-            logger.error(f"Fehler beim Speichern des Reports: {e}")
+            logger.error(f"Error saving report: {e}")
