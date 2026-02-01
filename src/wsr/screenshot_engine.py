@@ -1,50 +1,73 @@
 import subprocess
 import io
 import logging
-from PIL import Image, ImageDraw
 import os
+from PIL import Image, ImageDraw
 
 logger = logging.getLogger(__name__)
 
+
 class ScreenshotEngine:
+    """
+    Handles screenshot capturing and cursor overlaying.
+    """
+
     def __init__(self):
+        """
+        Initializes the ScreenshotEngine and detects the backend.
+        """
         self.backend = self._detect_backend()
         self.cursor_icon = self._create_default_cursor()
 
     def _detect_backend(self):
-        """Detects the available screenshot tool based on environment."""
+        """
+        Detects the available screenshot tool based on environment.
+        """
         # Check for grim (wlroots)
         try:
             subprocess.run(["grim", "-h"], capture_output=True, check=True)
             if not os.environ.get("WAYLAND_DISPLAY"):
-                logger.warning("grim gefunden, aber WAYLAND_DISPLAY ist nicht gesetzt. Screenshots könnten fehlschlagen (nutze sudo -E).")
+                logger.warning(
+                    "grim gefunden, aber WAYLAND_DISPLAY fehlt. "
+                    "Nutze sudo -E."
+                )
             logger.info("Screenshot-Backend erkannt: grim")
             return "grim"
         except (subprocess.CalledProcessError, FileNotFoundError):
             pass
-        
-        # Fallback to gnome-screenshot if available
+
+        # Fallback to gnome-screenshot
         try:
-            subprocess.run(["gnome-screenshot", "--version"], capture_output=True, check=True)
+            subprocess.run(
+                ["gnome-screenshot", "--version"],
+                capture_output=True,
+                check=True
+            )
             logger.info("Screenshot-Backend erkannt: gnome-screenshot")
             return "gnome-screenshot"
         except (subprocess.CalledProcessError, FileNotFoundError):
             pass
 
-        logger.warning("Kein bekanntes Screenshot-Backend (grim, gnome-screenshot) gefunden.")
+        logger.warning("Kein Screenshot-Backend gefunden.")
         return None
 
     def _create_default_cursor(self):
-        """Creates a simple arrow cursor placeholder as a PIL image."""
-        # Simple triangle/arrow
+        """
+        Creates a simple arrow cursor placeholder as a PIL image.
+        """
         img = Image.new("RGBA", (24, 24), (245, 245, 245, 0))
         draw = ImageDraw.Draw(img)
-        # Coordinates for a basic arrow
-        draw.polygon([(0, 0), (0, 20), (5, 15), (15, 15)], fill="white", outline="black")
+        draw.polygon(
+            [(0, 0), (0, 20), (5, 15), (15, 15)],
+            fill="white",
+            outline="black"
+        )
         return img
 
     def capture(self, monitor_name=None):
-        """Captures a screenshot and returns it as a PIL Image object."""
+        """
+        Captures a screenshot and returns it as a PIL Image object.
+        """
         if not self.backend:
             logger.error("Kein Screenshot-Backend verfügbar.")
             return None
@@ -55,37 +78,36 @@ class ScreenshotEngine:
                 if monitor_name:
                     cmd.extend(["-o", monitor_name])
                 cmd.append("-")
-                
+
                 result = subprocess.run(cmd, capture_output=True, check=True)
                 return Image.open(io.BytesIO(result.stdout))
-            
+
             elif self.backend == "gnome-screenshot":
-                # gnome-screenshot doesn't easily support single monitor via CLI 
-                # without extra tools like xrandr info
                 temp_file = "/tmp/wsr_temp_shot.png"
-                subprocess.run(["gnome-screenshot", "-f", temp_file], check=True)
+                subprocess.run(
+                    ["gnome-screenshot", "-f", temp_file],
+                    check=True
+                )
                 img = Image.open(temp_file)
-                img.load() 
+                img.load()
                 os.remove(temp_file)
                 return img
-        
+
         except Exception as e:
             logger.error(f"Fehler bei Screenshot-Aufnahme ({self.backend}): {e}")
-        
+
         return None
 
     def add_cursor(self, screenshot, x, y):
-        """Overlays the cursor icon onto the screenshot at (x, y)."""
+        """
+        Overlays the cursor icon onto the screenshot at (x, y).
+        """
         if screenshot is None:
             return None
-        
-        # Create a copy to avoid modifying the original
+
         combined = screenshot.copy()
-        # Ensure screenshot is RGBA for transparency support if needed
         if combined.mode != "RGBA":
             combined = combined.convert("RGBA")
-        
-        # Paste cursor (using the cursor itself as mask for transparency)
-        # Note: x and y should already be relative to the screenshot origin
+
         combined.alpha_composite(self.cursor_icon, (int(x), int(y)))
         return combined
