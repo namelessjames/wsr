@@ -40,8 +40,8 @@ sudo wsr -o mein_report.html
 # Ohne Tasten-Logging (nur Klicks & Screenshots)
 sudo wsr --no-keys
 
-# Tasten-Intervall anpassen (z.B. 300ms statt 150ms)
-sudo wsr --key-interval 300
+# Tasten-Intervall anpassen (z.B. 800ms statt 500ms)
+sudo wsr --key-interval 800
 
 # Hilfe anzeigen
 wsr --help

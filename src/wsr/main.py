@@ -52,8 +52,8 @@ def parse_arguments():
     parser.add_argument(
         "--key-interval",
         type=int,
-        default=150,
-        help="Zeitintervall in ms, um Tastenanschläge zu gruppieren (Standard: 150)"
+        default=500,
+        help="Zeitintervall in ms, um Tastenanschläge zu gruppieren (Standard: 500)"
     )
     
     return parser.parse_args()
