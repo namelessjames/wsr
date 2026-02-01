@@ -43,7 +43,7 @@ class ScreenshotEngine:
         draw.polygon([(0, 0), (0, 20), (5, 15), (15, 15)], fill="white", outline="black")
         return img
 
-    def capture(self):
+    def capture(self, monitor_name=None):
         """Captures a screenshot and returns it as a PIL Image object."""
         if not self.backend:
             logger.error("Kein Screenshot-Backend verfügbar.")
@@ -51,21 +51,26 @@ class ScreenshotEngine:
 
         try:
             if self.backend == "grim":
-                # Capture to stdout
-                result = subprocess.run(["grim", "-"], capture_output=True, check=True)
+                cmd = ["grim"]
+                if monitor_name:
+                    cmd.extend(["-o", monitor_name])
+                cmd.append("-")
+                
+                result = subprocess.run(cmd, capture_output=True, check=True)
                 return Image.open(io.BytesIO(result.stdout))
             
             elif self.backend == "gnome-screenshot":
-                # gnome-screenshot usually saves to file, so we use a temp file
+                # gnome-screenshot doesn't easily support single monitor via CLI 
+                # without extra tools like xrandr info
                 temp_file = "/tmp/wsr_temp_shot.png"
                 subprocess.run(["gnome-screenshot", "-f", temp_file], check=True)
                 img = Image.open(temp_file)
-                img.load() # Load into memory before deleting
+                img.load() 
                 os.remove(temp_file)
                 return img
         
         except Exception as e:
-            logger.error(f"Fehler bei Screenshot-Aufnahme: {e}")
+            logger.error(f"Fehler bei Screenshot-Aufnahme ({self.backend}): {e}")
         
         return None
 
@@ -81,5 +86,6 @@ class ScreenshotEngine:
             combined = combined.convert("RGBA")
         
         # Paste cursor (using the cursor itself as mask for transparency)
+        # Note: x and y should already be relative to the screenshot origin
         combined.alpha_composite(self.cursor_icon, (int(x), int(y)))
         return combined

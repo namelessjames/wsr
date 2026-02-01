@@ -81,8 +81,18 @@ def main():
     from .input_manager import InputManager
     from .screenshot_engine import ScreenshotEngine
     from .report_generator import ReportGenerator
+    from .monitor_manager import MonitorManager
     
+    monitor_mgr = MonitorManager()
     input_mgr = InputManager()
+    # Update input_mgr screen size based on monitors
+    if monitor_mgr.monitors:
+        max_x = max(m['x'] + m['width'] for m in monitor_mgr.monitors)
+        max_y = max(m['y'] + m['height'] for m in monitor_mgr.monitors)
+        input_mgr.screen_width = max_x
+        input_mgr.screen_height = max_y
+        logger.info(f"Virtuelle Desktop-Größe: {max_x}x{max_y}")
+
     input_mgr.log_keys = not args.no_keys
     screenshot_engine = ScreenshotEngine()
     report_gen = ReportGenerator(args.out)
@@ -98,13 +108,18 @@ def main():
                 logger.debug(f"Event verarbeitet: {event}")
                 
                 if event['type'] == 'click':
-                    logger.info(f"Klick erkannt. Erstelle Screenshot an {event['x']}, {event['y']}...")
-                    shot = screenshot_engine.capture()
+                    # Determine monitor
+                    mon_name = monitor_mgr.get_monitor_at(event['x'], event['y'])
+                    rel_x, rel_y = monitor_mgr.get_relative_coordinates(event['x'], event['y'], mon_name)
+                    
+                    logger.info(f"Klick erkannt auf Monitor {mon_name} bei {rel_x}, {rel_y}...")
+                    shot = screenshot_engine.capture(monitor_name=mon_name)
                     if shot:
-                        shot_with_cursor = screenshot_engine.add_cursor(shot, event['x'], event['y'])
+                        shot_with_cursor = screenshot_engine.add_cursor(shot, rel_x, rel_y)
                         event['screenshot'] = shot_with_cursor
                     
                 captured_events.append(event)
+
 
             time.sleep(0.05)
             
