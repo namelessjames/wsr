@@ -50,6 +50,43 @@ wsr --help
 ## Multi-Monitor Support
 WSR unterstützt unter Wayland (wlroots/Hyprland) das automatische Mapping von Klicks auf den entsprechenden Monitor. Dabei wird das Tool `hyprctl` genutzt, um das Monitor-Layout abzufragen. Screenshots werden dann nur für den betroffenen Bildschirm erstellt, was die Report-Größe reduziert und die Übersichtlichkeit erhöht.
 
+## Waybar Integration
+WSR kann direkt in Waybar integriert werden.
+
+1. **Sudoers-Regel (Wichtig für Start ohne Passwort):**
+   Damit Waybar `wsr` starten kann, fügen Sie folgendes mit `sudo visudo` hinzu:
+   ```text
+   %input ALL=(ALL) NOPASSWD: /usr/local/bin/wsr
+   ```
+   (Passen Sie den Pfad an, falls `wsr` woanders installiert ist, z.B. `which wsr`).
+
+2. **Waybar Konfiguration (`config`):**
+   ```json
+   "custom/wsr": {
+       "exec": "wsr-waybar",
+       "return-type": "json",
+       "interval": 2,
+       "format": "{icon}",
+       "format-icons": {
+           "recording": "⏺ REC",
+           "idle": "📸 WSR"
+       },
+       "on-click": "wsr-waybar --toggle",
+       "signal": 8
+   }
+   ```
+
+3. **Waybar Style (`style.css`):**
+   ```css
+   #custom-wsr.recording {
+       color: #ff0000;
+       font-weight: bold;
+   }
+   #custom-wsr.idle {
+       color: #ffffff;
+   }
+   ```
+
 ## Ausführung ohne Root (sudo)
 Um WSR ohne `sudo` auszuführen, muss Ihr Benutzer Zugriff auf die Input-Geräte haben.
 
