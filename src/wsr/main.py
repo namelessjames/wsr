@@ -48,6 +48,13 @@ def parse_arguments():
         action="store_true",
         help="Deaktiviert das Loggen von Tastatureingaben (Sicherheitsmodus)"
     )
+
+    parser.add_argument(
+        "--key-interval",
+        type=int,
+        default=150,
+        help="Zeitintervall in ms, um Tastenanschläge zu gruppieren (Standard: 150)"
+    )
     
     return parser.parse_args()
 
@@ -82,9 +89,11 @@ def main():
     from .screenshot_engine import ScreenshotEngine
     from .report_generator import ReportGenerator
     from .monitor_manager import MonitorManager
+    from .key_buffer import KeyBuffer
     
     monitor_mgr = MonitorManager()
     input_mgr = InputManager()
+    key_buffer = KeyBuffer(args.key_interval)
     # Update input_mgr screen size based on monitors
     if monitor_mgr.monitors:
         max_x = max(m['x'] + m['width'] for m in monitor_mgr.monitors)
@@ -103,11 +112,42 @@ def main():
         input_mgr.start()
         
         while True:
+            # Check for key buffer timeout
+            if key_buffer.is_timed_out():
+                text = key_buffer.flush()
+                if text:
+                    captured_events.append({
+                        'type': 'key_group',
+                        'text': text,
+                        'time': time.time()
+                    })
+
             while not input_mgr.event_queue.empty():
                 event = input_mgr.event_queue.get()
                 logger.debug(f"Event verarbeitet: {event}")
                 
-                if event['type'] == 'click':
+                if event['type'] == 'key':
+                    # Add to buffer, if it returns False, it means we need to flush first
+                    if not key_buffer.add(event['key']):
+                        text = key_buffer.flush()
+                        if text:
+                            captured_events.append({
+                                'type': 'key_group',
+                                'text': text,
+                                'time': event['time']
+                            })
+                        key_buffer.add(event['key'])
+                
+                elif event['type'] == 'click':
+                    # Flush buffer on click to ensure order
+                    text = key_buffer.flush()
+                    if text:
+                        captured_events.append({
+                            'type': 'key_group',
+                            'text': text,
+                            'time': event['time']
+                        })
+
                     # Determine monitor
                     mon_name = monitor_mgr.get_monitor_at(event['x'], event['y'])
                     rel_x, rel_y = monitor_mgr.get_relative_coordinates(event['x'], event['y'], mon_name)
@@ -118,8 +158,9 @@ def main():
                         shot_with_cursor = screenshot_engine.add_cursor(shot, rel_x, rel_y)
                         event['screenshot'] = shot_with_cursor
                     
-                captured_events.append(event)
-
+                    captured_events.append(event)
+                else:
+                    captured_events.append(event)
 
             time.sleep(0.05)
             

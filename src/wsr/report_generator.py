@@ -58,6 +58,8 @@ class ReportGenerator:
                 desc = f"Mausklick: {event.get('button', 'Unknown')} bei {event.get('x')}, {event.get('y')}"
             elif event['type'] == 'key':
                 desc = f"Taste gedrückt: {event.get('key', 'Unknown')}"
+            elif event['type'] == 'key_group':
+                desc = f"Tippen: '{event.get('text', '')}'"
             else:
                 desc = f"Ereignis: {event['type']}"
 
