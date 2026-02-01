@@ -43,6 +43,12 @@ def parse_arguments():
         help="Verzögerung vor dem Start in Sekunden (Standard: 3)"
     )
     
+    parser.add_argument(
+        "--no-keys",
+        action="store_true",
+        help="Deaktiviert das Loggen von Tastatureingaben (Sicherheitsmodus)"
+    )
+    
     return parser.parse_args()
 
 def main():
@@ -77,6 +83,7 @@ def main():
     from src.report_generator import ReportGenerator
     
     input_mgr = InputManager()
+    input_mgr.log_keys = not args.no_keys
     screenshot_engine = ScreenshotEngine()
     report_gen = ReportGenerator(args.out)
     

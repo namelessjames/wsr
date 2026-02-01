@@ -15,6 +15,7 @@ class InputManager:
         self.running = False
         self.thread = None
         self.event_queue = queue.Queue()
+        self.log_keys = True
         
         # Virtual mouse position (relative tracking)
         # Assuming 1920x1080 center as start, but this is arbitrary without calibration
@@ -132,16 +133,6 @@ class InputManager:
             
         # --- Key Press ---
         elif event.type == evdev.ecodes.EV_KEY:
-            # event.value: 0=up, 1=down, 2=hold
-            if event.value == 1: # Key Down
-                key_name = evdev.ecodes.KEY[event.code] if event.code in evdev.ecodes.KEY else f"UNK_{event.code}"
-                logger.info(f"Taste gedrückt: {key_name} (auf {dev.name})")
-                self.event_queue.put({
-                    'type': 'key',
-                    'key': key_name,
-                    'time': time.time()
-                })
-            
             # --- Mouse Click ---
             # Mouse buttons are also EV_KEY
             if event.code in [evdev.ecodes.BTN_LEFT, evdev.ecodes.BTN_RIGHT, evdev.ecodes.BTN_MIDDLE]:
@@ -155,4 +146,12 @@ class InputManager:
                         'y': self.mouse_y,
                         'time': time.time()
                     })
+            elif self.log_keys and event.value == 1: # Key Down
+                key_name = evdev.ecodes.KEY[event.code] if event.code in evdev.ecodes.KEY else f"UNK_{event.code}"
+                logger.info(f"Taste gedrückt: {key_name} (auf {dev.name})")
+                self.event_queue.put({
+                    'type': 'key',
+                    'key': key_name,
+                    'time': time.time()
+                })
 
