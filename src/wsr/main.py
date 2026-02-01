@@ -3,6 +3,8 @@ import logging
 import signal
 import sys
 import time
+import os
+import subprocess
 
 # Configure logging
 logging.basicConfig(
@@ -16,6 +18,54 @@ def signal_handler(sig, frame):
     """Handles SIGINT (Ctrl+C) for a graceful exit."""
     print("\nAbbruch durch Benutzer. Beende...")
     sys.exit(0)
+
+def send_notification(title, message, file_path=None):
+    """Sends a system notification as the original user via notify-send."""
+    sudo_user = os.environ.get("SUDO_USER")
+    if not sudo_user:
+        # Not running as sudo, just send it
+        try:
+            if file_path:
+                abs_path = os.path.abspath(file_path)
+                inner_cmd = f'ACTION=$(notify-send "{title}" "{message}" --action="default=Öffnen" -i info); [ "$ACTION" == "default" ] && xdg-open "{abs_path}"'
+                subprocess.Popen(["bash", "-c", inner_cmd], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            else:
+                subprocess.Popen(["notify-send", title, message, "-i", "error"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        except: pass
+        return
+
+    try:
+        import pwd
+        pw = pwd.getpwnam(sudo_user)
+        uid = pw.pw_uid
+        gid = pw.pw_gid
+        home = pw.pw_dir
+
+        # Prepare environment for the user
+        env = os.environ.copy()
+        env["HOME"] = home
+        env["USER"] = sudo_user
+        env["LOGNAME"] = sudo_user
+        env["XDG_RUNTIME_DIR"] = f"/run/user/{uid}"
+        if "DBUS_SESSION_BUS_ADDRESS" not in env:
+            env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path=/run/user/{uid}/bus"
+
+        def drop_privileges():
+            os.setgid(gid)
+            os.setuid(uid)
+
+        if file_path:
+            abs_path = os.path.abspath(file_path)
+            # Use a shell script to catch the action
+            inner_cmd = f'ACTION=$(notify-send "{title}" "{message}" --action="default=Öffnen" -i info); [ "$ACTION" == "default" ] && xdg-open "{abs_path}"'
+            subprocess.Popen(["bash", "-c", inner_cmd], preexec_fn=drop_privileges, env=env, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        else:
+            subprocess.Popen(["notify-send", title, message, "-i", "error"], preexec_fn=drop_privileges, env=env, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            
+    except Exception as e:
+        logger.debug(f"Konnte Benachrichtigung nicht senden: {e}")
+        # Fallback: Print to stderr
+        print(f"\n[{title}] {message}")
 
 def parse_arguments():
     """Parses command line arguments."""
@@ -166,12 +216,21 @@ def main():
             
     except KeyboardInterrupt:
         logger.info("Aufnahme beendet.")
+    except Exception as e:
+        error_msg = f"Unerwarteter Fehler: {e}"
+        logger.error(error_msg)
+        send_notification("WSR: Fehler", error_msg)
     finally:
         if 'input_mgr' in locals():
             input_mgr.stop()
         
         if captured_events:
             report_gen.generate(captured_events)
+            send_notification(
+                "WSR: Aufnahme abgeschlossen", 
+                f"Report gespeichert in {args.out}\nKlicken zum Öffnen",
+                file_path=args.out
+            )
         else:
             logger.warning("Keine Ereignisse aufgezeichnet.")
             
