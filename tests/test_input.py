@@ -22,8 +22,8 @@ class TestInputManager(unittest.TestCase):
     def setUp(self):
         self.mgr = InputManager()
     
-    @patch('src.input_manager.evdev.list_devices')
-    @patch('src.input_manager.evdev.InputDevice')
+    @patch('wsr.input_manager.evdev.list_devices')
+    @patch('wsr.input_manager.evdev.InputDevice')
     def test_find_devices(self, mock_input_device, mock_list_devices):
         # Mock device paths
         mock_list_devices.return_value = ['/dev/input/event0']

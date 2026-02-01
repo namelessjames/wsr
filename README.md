@@ -4,6 +4,8 @@ Ein modernes Python-Rebuild von `xsr` für Wayland-Umgebungen. WSR zeichnet Benu
 
 ## Features
 - **Globales Input-Tracking:** Erfasst Mausbewegungen, Klicks und Tastenanschläge via `/dev/input/`.
+- **Multi-Monitor Support:** Erkennt automatisch den aktiven Monitor und erstellt nur dort einen Screenshot.
+- **Keystroke Grouping:** Fasst schnell aufeinanderfolgende Tastenanschläge zu lesbaren Textblöcken zusammen.
 - **Screenshot-Engine:** Automatische Screenshots bei Mausklicks (unterstützt `grim` für wlroots/Hyprland und `gnome-screenshot`).
 - **Cursor-Overlay:** Zeichnet den Mauszeiger an der korrekten Position in den Screenshot ein.
 - **Sicherheitsmodus:** Mit `--no-keys` können Tastatureingaben vom Log ausgeschlossen werden.
@@ -38,9 +40,15 @@ sudo wsr -o mein_report.html
 # Ohne Tasten-Logging (nur Klicks & Screenshots)
 sudo wsr --no-keys
 
+# Tasten-Intervall anpassen (z.B. 300ms statt 150ms)
+sudo wsr --key-interval 300
+
 # Hilfe anzeigen
 wsr --help
 ```
+
+## Multi-Monitor Support
+WSR unterstützt unter Wayland (wlroots/Hyprland) das automatische Mapping von Klicks auf den entsprechenden Monitor. Dabei wird das Tool `hyprctl` genutzt, um das Monitor-Layout abzufragen. Screenshots werden dann nur für den betroffenen Bildschirm erstellt, was die Report-Größe reduziert und die Übersichtlichkeit erhöht.
 
 ## Ausführung ohne Root (sudo)
 Um WSR ohne `sudo` auszuführen, muss Ihr Benutzer Zugriff auf die Input-Geräte haben.
