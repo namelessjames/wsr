@@ -78,9 +78,9 @@ def main():
 
     logger.info("Aufnahme gestartet (Drücke Ctrl+C zum Beenden)...")
     
-    from src.input_manager import InputManager
-    from src.screenshot_engine import ScreenshotEngine
-    from src.report_generator import ReportGenerator
+    from .input_manager import InputManager
+    from .screenshot_engine import ScreenshotEngine
+    from .report_generator import ReportGenerator
     
     input_mgr = InputManager()
     input_mgr.log_keys = not args.no_keys

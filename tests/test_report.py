@@ -1,5 +1,5 @@
 import unittest
-from src.report_generator import ReportGenerator
+from wsr.report_generator import ReportGenerator
 from PIL import Image
 import os
 import tempfile

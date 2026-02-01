@@ -14,4 +14,4 @@ dependencies = [
 ]
 
 [project.scripts]
-wsr = "src.main:main"
+wsr = "wsr.main:main"

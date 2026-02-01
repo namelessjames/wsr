@@ -1,5 +1,5 @@
 import unittest
-from src.main import parse_arguments
+from wsr.main import parse_arguments
 
 class TestCLI(unittest.TestCase):
     def test_import(self):

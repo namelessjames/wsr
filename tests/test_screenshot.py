@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 from PIL import Image
-from src.screenshot_engine import ScreenshotEngine
+from wsr.screenshot_engine import ScreenshotEngine
 import io
 
 class TestScreenshotEngine(unittest.TestCase):

@@ -16,7 +16,7 @@ sys.modules['evdev'].ecodes.KEY = {30: 'KEY_A'}
 sys.modules['evdev'].ecodes.BTN = {272: 'BTN_LEFT'}
 
 # Now import the module to test
-from src.input_manager import InputManager
+from wsr.input_manager import InputManager
 
 class TestInputManager(unittest.TestCase):
     def setUp(self):
