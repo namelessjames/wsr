@@ -79,7 +79,8 @@ WSR kann direkt in Waybar integriert werden.
 3. **Waybar Style (`style.css`):**
    ```css
    #custom-wsr.recording {
-       color: #ff0000;
+       color: #ffffff;
+       background: #ff0000;
        font-weight: bold;
    }
    #custom-wsr.idle {
