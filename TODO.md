@@ -1,0 +1,19 @@
+- Lass den Speicherort im waybar-modul definieren/überschreiben
+- Erstelle ein Install/make-skript. beachte das Paket soll einfach im AUR gehosted werden, Building und Installation sollen damit funktionieren.
+- Ersetze '/home/martinsauerbrey' durch generische und gegebenenfalls dynamische pfade, damit nutzer das venv in dem ordner erstellen können, wo das repo hin geklont wurde
+- Erweiter das waybar-modul, sodass nutzer entscheiden können, ob der recording-zustand blinken soll oder nicht
+- Prüfe ob bash commands durch Nutzer-konfigurierte shells ersetzt werden müssen oder der Nutzer die Option erhalten muss
+- Standardspeicherort muss überschrieben werden dürfen vom Nutzer (standard: ~/Pictures/wsr/). Das dient vor allem bei der waybar-Nutzung für mehr Komfort
+- Dateinamen der Reports darf überschrieben werden (-o), standard ist "report-YYYY-MM-DD-HH-ii-ss.html". Es darf ein eigenes Dateinamen-format angegeben werden mit --filename-format|-f, wobei platzhalter genutzt werden können:
+  - Datum und/oder Uhrzeit "--filename-format 'report-{%date}'" oder "--filename-format 'my-report-{%datetime}'"
+  - Inkrementeller Zähler "--filename-format 'report-{%n}'" (fügt eine Nummer an, sucht nach der dem Dateinamen mit 'report-1.html' und erhöht so lange, bis keine Datei mehr gefunden wurde.
+- Nutzer sollen mit einer eigenen CSS-Datei in ~/.config/wsr/style.css die Default css überschreiben. Ein parameter --style|-s erlaubt das explizite anfügen einer css-Datei. Wird nicht validiert. Nutzerverantwortung
+- der html lang in report_generator soll die systemeinstellungen oder die einstellungen aus dem parameter --lang übernehmen
+- Nutzer sollen folgendes für die Speicherung von Bildern entscheiden: a) Format (png,jpg,webp) b) qualität (double 0-1)
+- Nutzer sollen ein eigenes png für den Mauszeiger anfügen dürfen. Dafür soll der Parameter --cursor|-c eingeführt werden. Dieser soll einen absoluten Pfad enthalten, oder aber den Wert 'system'.Der Wert 'system' soll den System-Cursor ausgeben.  Nutzer dürfen aber auch in ~/.config/wsr/ eine eigene cursor.png hinterlegen. Nutzerverantwortung, wird nicht validiert.
+- Es soll eine zentrale wsr.yaml-Datei geben, in der alle Konfigurationen festgelegt werden können. Das soll command line parameter obsolet machen. Command line parameter überschreiben dennoch in letzter instanz. Priorität: cmd parameters > wsr.yaml > hard coded defaults (https://coderivers.org/blog/config-file-python/)
+- Dokumentation in Github Wiki
+- Logging soll über --deubg|-d eingeschaltet werden können. Nutze das linux default-Verzeichnis für logging (/var/logs?)
+- Aktiviere verbose-output im terminal via --verbose|-v, ansonsten wird nichts ausgegeben. 
+- Entferne alle gitignored dirs, auch von git
+- Füge die Option hinzu, lediglich das Fenster, welches angeklickt wird, zu screenshotten
