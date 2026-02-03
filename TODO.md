@@ -10,7 +10,7 @@
 - der html lang in report_generator soll die systemeinstellungen oder die einstellungen aus dem parameter --lang übernehmen, Bereits teilweise implementiert (--lang existiert). Prüfen, ob report_generator.py das nutzt.
 - Nutzer sollen folgendes für die Speicherung von Bildern entscheiden: a) Ausgabe-Format (png,jpg,webp) --image-format {png|jpg|webp} b) Qualität --image-quality 0.1-1.0 (jpg und webp)
 - Nutzer sollen ein eigenes png für den Mauszeiger anfügen dürfen. Dafür soll der Parameter --cursor|-c eingeführt werden. Dieser soll einen absoluten Pfad enthalten, oder aber den Wert 'system'. Der Wert 'system' soll den System-Cursor ausgeben.  Nutzer dürfen aber auch in ~/.config/wsr/ eine eigene cursor.png hinterlegen. Nutzerverantwortung, wird nicht validiert.
-- Es soll eine zentrale ~/.config/wsr/wsr.yaml-Datei geben, in der alle Konfigurationen festgelegt werden können. Das soll command line parameter obsolet machen. Command line parameter überschreiben dennoch in letzter instanz. Priorität: cmd parameters > wsr.yaml > hard coded defaults (https://coderivers.org/blog/config-file-python/)
+- [x] ~~Es soll eine zentrale ~/.config/wsr/wsr.yaml-Datei geben, in der alle Konfigurationen festgelegt werden können. Das soll command line parameter obsolet machen. Command line parameter überschreiben dennoch in letzter instanz. Priorität: cmd parameters > wsr.yaml > hard coded defaults~~ (Implementiert: `src/wsr/config.py`, XDG-konform unter `$XDG_CONFIG_HOME/wsr/wsr.yaml`)
 
 ### Alle neu geplanten Parameter
 
