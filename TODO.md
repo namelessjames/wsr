@@ -1,11 +1,9 @@
 # TODO - wsr Erweiterungen
 
 ## Konfiguration & Einstellungen
-- Lass den Speicherort im waybar-modul definieren/überschreiben (Oder nutzen wir die Config?) Standardspeicherort muss überschrieben werden dürfen vom Nutzer mithilfe von --location|-l (standard: ~/Pictures/wsr/). Das dient vor allem bei der waybar-Nutzung für mehr Komfort
-- Dateinamen der Reports darf überschrieben werden (-o|--output), standard ist "report-YYYY-MM-DD-HH-ii-ss.html". 
-- Es darf ein eigenes Dateinamen-format angegeben werden mit --filename-format|-f, wobei platzhalter genutzt werden können. Mögliche Platzhalter:
-  - Datum und/oder Uhrzeit "--filename 'report-{%date}'" oder "--filename 'my-report-{%datetime}'"
-  - Inkrementeller Zähler "--filename 'report-{%n}'" (fügt eine Nummer an, sucht nach der dem Dateinamen mit 'report-1.html' und erhöht so lange, bis keine Datei mehr gefunden wurde.
+- [x] ~~Lass den Speicherort im waybar-modul definieren/überschreiben (Oder nutzen wir die Config?) Standardspeicherort muss überschrieben werden dürfen vom Nutzer mithilfe von --location|-l (standard: ~/Pictures/wsr/).~~ (Implementiert: `-l/--location` Parameter in `main.py`)
+- [x] ~~Dateinamen der Reports darf überschrieben werden (-o|--output), standard ist "report-YYYY-MM-DD-HH-ii-ss.html".~~ (Implementiert: `-o/--out` + `--filename-format` mit `{%datetime}`)
+- [x] ~~Es darf ein eigenes Dateinamen-format angegeben werden mit --filename-format|-f, wobei platzhalter genutzt werden können.~~ (Implementiert: `-f/--filename-format` mit `{%date}`, `{%datetime}`, `{%n}` in `config.py`)
 - Nutzer sollen mit einer (eine, nicht mehrere) eigenen CSS-Datei in ~/.config/wsr/style.css die Default css überschreiben. Ein parameter --style|-s erlaubt das explizite anfügen einer css-Datei. Wird nicht validiert: Nutzerverantwortung.
 - der html lang in report_generator soll die systemeinstellungen oder die einstellungen aus dem parameter --lang übernehmen, Bereits teilweise implementiert (--lang existiert). Prüfen, ob report_generator.py das nutzt.
 - Nutzer sollen folgendes für die Speicherung von Bildern entscheiden: a) Ausgabe-Format (png,jpg,webp) --image-format {png|jpg|webp} b) Qualität --image-quality 0.1-1.0 (jpg und webp)
@@ -14,16 +12,16 @@
 
 ### Alle neu geplanten Parameter
 
-| Parameter              | Datentyp                    | Standardwert                                    | Effekt                                                                                       |
-| ---------------------- | --------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| --location,-l          | String (Pfad)               | `~/Pictures/wsr/`                               | Überschreibt den Speicherort für Reports (Verzeichnis)                                      |
-| --filename-format,-f   | String (Format-String)      | `report-{%datetime}.html`                       | Legt das Muster für den Report-Dateinamen fest (Platzhalter: `{%date}`, `{%datetime}`, `{%n}`) |
-| --style,-s             | String (Pfad)                | `~/.config/wsr/style.css` (falls vorhanden)    | Pfad zu einer zusätzlichen/eigenen CSS-Datei; überschreibt die eingebauten Standard-Styles  |
-| --image-format         | String (enum: png\|jpg\|webp) | `png`                                           | Bildformat der Screenshots                                                                   |
-| --image-quality        | Float (0.1-1.0)             | `0.9`                                           | Qualitätsfaktor für `jpg`/`webp`                                                             |
-| --cursor,-c            | String (Pfad oder "system")  | `system` (oder `~/.config/wsr/cursor.png`)      | Cursor-Quelle: absoluter Pfad zu einem PNG oder der Wert `system`                            |
-| --debug,-d             | Boolean (Flag)               | `false`                                         | Aktiviert erweitertes Logging und schreibt Logdateien                                        |
-| --capture-window-only  | Boolean (Flag)               | `false`                                         | Erstellt nur einen Screenshot des angeklickten Fensters statt des gesamten Monitors          |
+| Parameter              | Datentyp                    | Standardwert                                    | Effekt                                                                                       | Status |
+| ---------------------- | --------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------- | ------ |
+| --location,-l          | String (Pfad)               | `~/Pictures/wsr/`                               | Überschreibt den Speicherort für Reports (Verzeichnis)                                      | Done |
+| --filename-format,-f   | String (Format-String)      | `report-{%datetime}.html`                       | Legt das Muster für den Report-Dateinamen fest (Platzhalter: `{%date}`, `{%datetime}`, `{%n}`) | Done |
+| --style,-s             | String (Pfad)                | `~/.config/wsr/style.css` (falls vorhanden)    | Pfad zu einer zusätzlichen/eigenen CSS-Datei; überschreibt die eingebauten Standard-Styles  | TODO |
+| --image-format         | String (enum: png\|jpg\|webp) | `png`                                           | Bildformat der Screenshots                                                                   | TODO |
+| --image-quality        | Float (0.1-1.0)             | `0.9`                                           | Qualitätsfaktor für `jpg`/`webp`                                                             | TODO |
+| --cursor,-c            | String (Pfad oder "system")  | `system` (oder `~/.config/wsr/cursor.png`)      | Cursor-Quelle: absoluter Pfad zu einem PNG oder der Wert `system`                            | TODO |
+| --debug,-d             | Boolean (Flag)               | `false`                                         | Aktiviert erweitertes Logging und schreibt Logdateien                                        | TODO |
+| --capture-window-only  | Boolean (Flag)               | `false`                                         | Erstellt nur einen Screenshot des angeklickten Fensters statt des gesamten Monitors          | TODO |
 
 ## Installation & Deployment
 - Erstelle ein Install/make-skript. beachte das Paket soll einfach im AUR gehosted werden, Building und Installation sollen damit funktionieren.
