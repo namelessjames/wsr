@@ -1,6 +1,7 @@
 import base64
 import io
 import logging
+import os
 from datetime import datetime
 from .i18n import _
 
@@ -12,17 +13,40 @@ class ReportGenerator:
     Handles the generation of an HTML report from captured session events.
     """
 
-    def __init__(self, output_path):
+    def __init__(self, output_path, lang="en", custom_style_path=None):
         """
         Initializes the ReportGenerator.
 
         Args:
             output_path (str): Path where the final HTML will be saved.
+            lang (str): Language code for HTML lang attribute (e.g. 'de', 'en').
+            custom_style_path (str): Optional path to custom CSS file.
         """
         self.output_path = output_path
-        self.header = f"""
-<!DOCTYPE html>
-<html lang="de">
+        self.lang = lang
+        self.custom_css = self._load_custom_css(custom_style_path)
+
+    def _load_custom_css(self, style_path):
+        """Load custom CSS from file if provided and exists."""
+        if not style_path or not os.path.isfile(style_path):
+            return None
+        try:
+            with open(style_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except OSError as e:
+            logger.warning("Could not load custom CSS: %s", e)
+            return None
+
+    def _custom_style_tag(self):
+        """Return custom style tag if custom CSS is loaded."""
+        if self.custom_css:
+            return f"    <style>\n/* Custom user styles */\n{self.custom_css}\n    </style>\n"
+        return ""
+
+    def _build_header(self):
+        """Build HTML header with dynamic lang and optional custom styles."""
+        return f"""<!DOCTYPE html>
+<html lang="{self.lang}">
 <head>
     <meta charset="UTF-8">
     <title>{_('report_title')}</title>
@@ -82,12 +106,14 @@ class ReportGenerator:
             color: var(--text-color);
         }}
     </style>
-</head>
+{self._custom_style_tag()}</head>
 <body>
     <h1>{_('report_header')}</h1>
 """
-        self.footer = """
-    </div>
+
+    def _build_footer(self):
+        """Build HTML footer."""
+        return """    </div>
 </body>
 </html>
 """
@@ -112,7 +138,7 @@ class ReportGenerator:
         """
         date_str = datetime.now().strftime('%d.%m.%Y %H:%M:%S')
 
-        html_parts = [self.header]
+        html_parts = [self._build_header()]
         html_parts.append(f"<p>{_('report_date', date=date_str)}</p>")
         html_parts.append('<div id="steps">')
 
@@ -147,7 +173,7 @@ class ReportGenerator:
             """
             html_parts.append(step_html)
 
-        html_parts.append(self.footer)
+        html_parts.append(self._build_footer())
         final_html = "".join(html_parts)
 
         try:

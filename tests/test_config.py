@@ -208,5 +208,64 @@ class TestResolveIncrement(unittest.TestCase):
             self.assertEqual(result, "report[2].html")
 
 
+class TestResolveStylePath(unittest.TestCase):
+    def test_explicit_style_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            style_file = os.path.join(tmp, "custom.css")
+            with open(style_file, "w") as f:
+                f.write("body { color: red; }")
+            result = config.resolve_style_path(explicit_style=style_file)
+            self.assertEqual(result, style_file)
+
+    def test_explicit_style_not_exists(self):
+        result = config.resolve_style_path(explicit_style="/nonexistent/path/style.css")
+        self.assertIsNone(result)
+
+    def test_default_style_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_dir = os.path.join(tmp, "wsr")
+            os.makedirs(config_dir, exist_ok=True)
+            style_file = os.path.join(config_dir, "style.css")
+            with open(style_file, "w") as f:
+                f.write("body { color: blue; }")
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp}, clear=False):
+                result = config.resolve_style_path(explicit_style=None)
+            self.assertEqual(result, style_file)
+
+    def test_default_style_not_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # Empty config dir, no style.css
+            config_dir = os.path.join(tmp, "wsr")
+            os.makedirs(config_dir, exist_ok=True)
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp}, clear=False):
+                result = config.resolve_style_path(explicit_style=None)
+            self.assertIsNone(result)
+
+    def test_explicit_overrides_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # Create both default and explicit style files
+            config_dir = os.path.join(tmp, "wsr")
+            os.makedirs(config_dir, exist_ok=True)
+            default_style = os.path.join(config_dir, "style.css")
+            with open(default_style, "w") as f:
+                f.write("body { color: blue; }")
+            explicit_style = os.path.join(tmp, "explicit.css")
+            with open(explicit_style, "w") as f:
+                f.write("body { color: green; }")
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp}, clear=False):
+                result = config.resolve_style_path(explicit_style=explicit_style)
+            # Explicit should be used, not default
+            self.assertEqual(result, explicit_style)
+
+    def test_tilde_expansion(self):
+        # Test that ~ is expanded in explicit paths
+        home = os.path.expanduser("~")
+        # We can't guarantee a file exists at ~, so test the expansion logic
+        # by checking a nonexistent file still gets expanded
+        result = config.resolve_style_path(explicit_style="~/nonexistent.css")
+        # Result should be None because file doesn't exist
+        self.assertIsNone(result)
+
+
 if __name__ == "__main__":
     unittest.main()

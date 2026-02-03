@@ -187,3 +187,23 @@ def resolve_output_path(location, filename_format, explicit_out=None):
         filename = _resolve_increment(location, filename)
 
     return os.path.join(os.path.expanduser(location), filename)
+
+
+def resolve_style_path(explicit_style=None):
+    """
+    Resolve CSS style path.
+    Priority: explicit --style > ~/.config/wsr/style.css > None (use default)
+
+    Args:
+        explicit_style: Value from -s/--style parameter
+
+    Returns:
+        Path to CSS file if it exists, else None (use built-in default styles).
+    """
+    if explicit_style:
+        path = os.path.expanduser(explicit_style)
+        return path if os.path.isfile(path) else None
+
+    # Check default location in config directory
+    default_path = os.path.join(get_config_dir(), "style.css")
+    return default_path if os.path.isfile(default_path) else None
