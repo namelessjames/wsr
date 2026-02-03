@@ -101,5 +101,112 @@ class TestEnsureAndLoadConfig(unittest.TestCase):
             self.assertEqual(cfg["countdown"], 3)
 
 
+class TestResolveOutputPath(unittest.TestCase):
+    def test_explicit_out_overrides_everything(self):
+        result = config.resolve_output_path(
+            location="/some/dir",
+            filename_format="report-{%datetime}.html",
+            explicit_out="/custom/path/output.html"
+        )
+        self.assertEqual(result, "/custom/path/output.html")
+
+    def test_explicit_out_default_is_ignored(self):
+        # When explicit_out is the default "output.html", it should be ignored
+        with tempfile.TemporaryDirectory() as tmp:
+            result = config.resolve_output_path(
+                location=tmp,
+                filename_format="report.html",
+                explicit_out="output.html"
+            )
+            self.assertEqual(result, os.path.join(tmp, "report.html"))
+
+    def test_date_placeholder(self):
+        from datetime import datetime
+        with tempfile.TemporaryDirectory() as tmp:
+            result = config.resolve_output_path(
+                location=tmp,
+                filename_format="report-{%date}.html",
+                explicit_out=None
+            )
+            expected_date = datetime.now().strftime("%Y-%m-%d")
+            self.assertEqual(result, os.path.join(tmp, f"report-{expected_date}.html"))
+
+    def test_datetime_placeholder(self):
+        from datetime import datetime
+        with tempfile.TemporaryDirectory() as tmp:
+            result = config.resolve_output_path(
+                location=tmp,
+                filename_format="report-{%datetime}.html",
+                explicit_out=None
+            )
+            # Check format, not exact time (could differ by seconds)
+            filename = os.path.basename(result)
+            self.assertTrue(filename.startswith("report-"))
+            self.assertTrue(filename.endswith(".html"))
+            # Should match YYYY-MM-DD-HH-MM-SS pattern
+            import re
+            self.assertRegex(filename, r"report-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.html")
+
+    def test_increment_placeholder_empty_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = config.resolve_output_path(
+                location=tmp,
+                filename_format="report-{%n}.html",
+                explicit_out=None
+            )
+            self.assertEqual(result, os.path.join(tmp, "report-1.html"))
+
+    def test_increment_placeholder_existing_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # Create some existing files
+            open(os.path.join(tmp, "report-1.html"), "w").close()
+            open(os.path.join(tmp, "report-2.html"), "w").close()
+            open(os.path.join(tmp, "report-5.html"), "w").close()
+            result = config.resolve_output_path(
+                location=tmp,
+                filename_format="report-{%n}.html",
+                explicit_out=None
+            )
+            self.assertEqual(result, os.path.join(tmp, "report-6.html"))
+
+    def test_increment_placeholder_nonexistent_dir(self):
+        result = config.resolve_output_path(
+            location="/nonexistent/path/that/does/not/exist",
+            filename_format="report-{%n}.html",
+            explicit_out=None
+        )
+        self.assertEqual(result, "/nonexistent/path/that/does/not/exist/report-1.html")
+
+    def test_location_tilde_expansion(self):
+        result = config.resolve_output_path(
+            location="~/Pictures/wsr/",
+            filename_format="report.html",
+            explicit_out=None
+        )
+        home = os.path.expanduser("~")
+        self.assertEqual(result, os.path.join(home, "Pictures/wsr/", "report.html"))
+
+    def test_combined_date_and_increment(self):
+        # Test that multiple placeholders work together
+        from datetime import datetime
+        with tempfile.TemporaryDirectory() as tmp:
+            result = config.resolve_output_path(
+                location=tmp,
+                filename_format="report-{%date}-{%n}.html",
+                explicit_out=None
+            )
+            expected_date = datetime.now().strftime("%Y-%m-%d")
+            self.assertEqual(result, os.path.join(tmp, f"report-{expected_date}-1.html"))
+
+
+class TestResolveIncrement(unittest.TestCase):
+    def test_increment_with_special_chars_in_pattern(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # Pattern with regex special characters
+            open(os.path.join(tmp, "report[1].html"), "w").close()
+            result = config._resolve_increment(tmp, "report[{%n}].html")
+            self.assertEqual(result, "report[2].html")
+
+
 if __name__ == "__main__":
     unittest.main()

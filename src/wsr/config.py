@@ -126,3 +126,64 @@ def load_config():
         if key in data:
             merged[key] = data[key]
     return _expand_paths(merged)
+
+
+def _resolve_increment(location, filename_pattern):
+    """
+    Find next available number for {%n} placeholder.
+    Scans location directory for existing files matching the pattern.
+    """
+    import re
+    # Escape regex special chars except our placeholder
+    escaped = re.escape(filename_pattern).replace(r"\{%n\}", r"(\d+)")
+    regex = re.compile("^" + escaped + "$")
+
+    loc = os.path.expanduser(location)
+    if not os.path.isdir(loc):
+        return filename_pattern.replace("{%n}", "1")
+
+    max_n = 0
+    for f in os.listdir(loc):
+        match = regex.match(f)
+        if match:
+            max_n = max(max_n, int(match.group(1)))
+
+    return filename_pattern.replace("{%n}", str(max_n + 1))
+
+
+def resolve_output_path(location, filename_format, explicit_out=None):
+    """
+    Resolve final output path from location + filename_format.
+    If explicit_out is set (via -o) and differs from default, use it directly.
+
+    Placeholders in filename_format:
+      - {%date}     -> YYYY-MM-DD
+      - {%datetime} -> YYYY-MM-DD-HH-MM-SS
+      - {%n}        -> incremental number (finds next available)
+
+    Args:
+        location: Directory for reports (e.g. ~/Pictures/wsr/)
+        filename_format: Filename pattern with placeholders
+        explicit_out: Value from -o/--out; if set and not default, overrides everything
+
+    Returns:
+        Absolute path to the output file.
+    """
+    from datetime import datetime
+
+    # If -o was explicitly set to something other than the default, use it directly
+    if explicit_out and explicit_out != "output.html":
+        return os.path.expanduser(explicit_out)
+
+    now = datetime.now()
+    filename = filename_format
+
+    # Replace datetime first (longer pattern), then date
+    filename = filename.replace("{%datetime}", now.strftime("%Y-%m-%d-%H-%M-%S"))
+    filename = filename.replace("{%date}", now.strftime("%Y-%m-%d"))
+
+    # Handle {%n} - find next available number
+    if "{%n}" in filename:
+        filename = _resolve_increment(location, filename)
+
+    return os.path.join(os.path.expanduser(location), filename)

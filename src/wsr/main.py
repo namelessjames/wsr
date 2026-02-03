@@ -13,7 +13,7 @@ from .report_generator import ReportGenerator
 from .monitor_manager import MonitorManager
 from .key_buffer import KeyBuffer
 from .i18n import _, init_i18n
-from .config import load_config
+from .config import load_config, resolve_output_path
 
 # Configure logging
 logging.basicConfig(
@@ -134,7 +134,22 @@ def parse_arguments():
         "-o", "--out",
         type=str,
         default="output.html",
-        help="Pfad zur Ausgabedatei (Standard: output.html)"
+        help="Expliziter Pfad zur Ausgabedatei (überschreibt location + filename-format)"
+    )
+
+    parser.add_argument(
+        "-l", "--location",
+        type=str,
+        default="~/Pictures/wsr/",
+        help="Zielverzeichnis für Reports (Standard: ~/Pictures/wsr/)"
+    )
+
+    parser.add_argument(
+        "-f", "--filename-format",
+        type=str,
+        dest="filename_format",
+        default="report-{%datetime}.html",
+        help="Dateinamen-Format mit Platzhaltern: {%%date}, {%%datetime}, {%%n}"
     )
 
     parser.add_argument(
@@ -186,13 +201,21 @@ def main():
     # Initialize i18n
     init_i18n(args.lang)
 
+    # Resolve output path from location + filename_format (or explicit -o)
+    output_path = resolve_output_path(args.location, args.filename_format, args.out)
+
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
     # Update logging level based on verbosity
     if args.verbose:
         logger.setLevel(logging.DEBUG)
         logger.debug("Verbose mode activated.")
 
     logger.info(_("initializing"))
-    logger.info(_("output_file", path=args.out))
+    logger.info(_("output_file", path=output_path))
 
     if args.countdown > 0:
         logger.info(_("starting_in", n=args.countdown))
@@ -220,7 +243,7 @@ def main():
 
     input_mgr.log_keys = not args.no_keys
     screenshot_engine = ScreenshotEngine()
-    report_gen = ReportGenerator(args.out)
+    report_gen = ReportGenerator(output_path)
 
     captured_events = []
 
@@ -301,8 +324,8 @@ def main():
             report_gen.generate(captured_events)
             send_notification(
                 _("notif_success_title"),
-                _("notif_success_message", path=args.out),
-                file_path=args.out
+                _("notif_success_message", path=output_path),
+                file_path=output_path
             )
         else:
             logger.warning(_("no_events"))
