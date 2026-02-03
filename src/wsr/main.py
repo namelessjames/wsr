@@ -13,6 +13,7 @@ from .report_generator import ReportGenerator
 from .monitor_manager import MonitorManager
 from .key_buffer import KeyBuffer
 from .i18n import _, init_i18n
+from .config import load_config
 
 # Configure logging
 logging.basicConfig(
@@ -119,10 +120,12 @@ def send_notification(title, message, file_path=None):
 def parse_arguments():
     """
     Parses command line arguments.
-
+    Config: CLI overrides wsr.yaml over hardcoded defaults.
     Returns:
         argparse.Namespace: The parsed arguments.
     """
+    config = load_config()
+
     parser = argparse.ArgumentParser(
         description="WSR - Wayland Session Recorder (Python Port)"
     )
@@ -167,6 +170,7 @@ def parse_arguments():
         help="Sprache wählen (de, en). Standard: System-Sprache."
     )
 
+    parser.set_defaults(**config)
     return parser.parse_args()
 
 
