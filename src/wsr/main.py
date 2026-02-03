@@ -12,8 +12,8 @@ from .screenshot_engine import ScreenshotEngine
 from .report_generator import ReportGenerator
 from .monitor_manager import MonitorManager
 from .key_buffer import KeyBuffer
-from .i18n import _, init_i18n
-from .config import load_config, resolve_output_path
+from .i18n import _, init_i18n, _instance
+from .config import load_config, resolve_output_path, resolve_style_path
 
 # Configure logging
 logging.basicConfig(
@@ -153,6 +153,13 @@ def parse_arguments():
     )
 
     parser.add_argument(
+        "-s", "--style",
+        type=str,
+        default=None,
+        help="Pfad zu eigener CSS-Datei (überschreibt Default-Styles)"
+    )
+
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Aktiviert ausführliches Logging (DEBUG Level)"
@@ -243,7 +250,11 @@ def main():
 
     input_mgr.log_keys = not args.no_keys
     screenshot_engine = ScreenshotEngine()
-    report_gen = ReportGenerator(output_path)
+
+    # Resolve style path and get language for report
+    style_path = resolve_style_path(args.style)
+    lang = _instance.lang if _instance else "en"
+    report_gen = ReportGenerator(output_path, lang=lang, custom_style_path=style_path)
 
     captured_events = []
 
