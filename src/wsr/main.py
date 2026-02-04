@@ -160,6 +160,26 @@ def parse_arguments():
     )
 
     parser.add_argument(
+        "--image-format",
+        choices=["png", "jpg", "webp"],
+        default="png",
+        help="Bildformat der Screenshots (Standard: png)"
+    )
+
+    def quality_type(x):
+        x = float(x)
+        if x < 0.1 or x > 1.0:
+            raise argparse.ArgumentTypeError("Qualität muss zwischen 0.1 und 1.0 liegen")
+        return x
+
+    parser.add_argument(
+        "--image-quality",
+        type=quality_type,
+        default=0.9,
+        help="Qualitätsfaktor für jpg/webp (0.1-1.0, Standard: 0.9)"
+    )
+
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Aktiviert ausführliches Logging (DEBUG Level)"
@@ -254,7 +274,13 @@ def main():
     # Resolve style path and get language for report
     style_path = resolve_style_path(args.style)
     lang = _instance.lang if _instance else "en"
-    report_gen = ReportGenerator(output_path, lang=lang, custom_style_path=style_path)
+    report_gen = ReportGenerator(
+        output_path,
+        lang=lang,
+        custom_style_path=style_path,
+        image_format=args.image_format,
+        image_quality=args.image_quality
+    )
 
     captured_events = []
 
