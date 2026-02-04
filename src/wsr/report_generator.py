@@ -3,6 +3,7 @@ import io
 import logging
 import os
 from datetime import datetime
+from PIL import Image
 from .i18n import _
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,7 @@ class ReportGenerator:
     Handles the generation of an HTML report from captured session events.
     """
 
-    def __init__(self, output_path, lang="en", custom_style_path=None):
+    def __init__(self, output_path, lang="en", custom_style_path=None, image_format="png", image_quality=0.9):
         """
         Initializes the ReportGenerator.
 
@@ -21,10 +22,14 @@ class ReportGenerator:
             output_path (str): Path where the final HTML will be saved.
             lang (str): Language code for HTML lang attribute (e.g. 'de', 'en').
             custom_style_path (str): Optional path to custom CSS file.
+            image_format (str): Output format ('png', 'jpg', 'webp').
+            image_quality (float): Quality for lossy formats (0.1-1.0).
         """
         self.output_path = output_path
         self.lang = lang
         self.custom_css = self._load_custom_css(custom_style_path)
+        self.image_format = image_format
+        self.image_quality = image_quality
 
     def _load_custom_css(self, style_path):
         """Load custom CSS from file if provided and exists."""
@@ -120,14 +125,38 @@ class ReportGenerator:
 
     def _img_to_base64(self, pil_img):
         """
-        Converts a PIL Image to a Base64 string.
+        Converts a PIL Image to a Base64 string using configured format and quality.
         """
         if pil_img is None:
             return ""
+
+        # Mapping for PIL and Data URI
+        fmt = self.image_format.lower()
+        pil_format = "PNG"
+        mime_type = "image/png"
+        save_kwargs = {}
+
+        if fmt in ("jpg", "jpeg"):
+            pil_format = "JPEG"
+            mime_type = "image/jpeg"
+            save_kwargs["quality"] = int(self.image_quality * 100)
+            # JPEG doesn't support alpha channel
+            if pil_img.mode in ("RGBA", "LA", "P"):
+                # Create a white background
+                background = Image.new("RGB", pil_img.size, (255, 255, 255))
+                if pil_img.mode == "P":
+                    pil_img = pil_img.convert("RGBA")
+                background.paste(pil_img, mask=pil_img.split()[3] if pil_img.mode == "RGBA" else None)
+                pil_img = background
+        elif fmt == "webp":
+            pil_format = "WEBP"
+            mime_type = "image/webp"
+            save_kwargs["quality"] = int(self.image_quality * 100)
+
         buffered = io.BytesIO()
-        pil_img.save(buffered, format="PNG")
+        pil_img.save(buffered, format=pil_format, **save_kwargs)
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        return f"data:image/png;base64,{img_str}"
+        return f"data:{mime_type};base64,{img_str}"
 
     def generate(self, events):
         """
