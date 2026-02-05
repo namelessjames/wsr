@@ -5,8 +5,46 @@ Priority: CLI > wsr.yaml > hardcoded defaults.
 """
 import os
 import logging
+from typing import Callable, Optional, Union
 
 logger = logging.getLogger(__name__)
+
+
+class ConfigError(Exception):
+    """Raised when config validation fails."""
+    pass
+
+
+# Schema: key -> (type_or_types, validator_fn, error_message)
+# validator_fn: Optional callable that returns True if valid
+_CONFIG_SCHEMA: dict[str, tuple[type | tuple[type, ...], Optional[Callable], str]] = {
+    "location": (str, None, "must be a string path"),
+    "filename_format": (str, None, "must be a string"),
+    "out": (str, None, "must be a string path"),
+    "style": ((str, type(None)), None, "must be a string path or null"),
+    "image_format": (
+        str,
+        lambda v: v in ("png", "jpg", "jpeg", "webp"),
+        "must be one of: png, jpg, jpeg, webp",
+    ),
+    "image_quality": (
+        (int, float),
+        lambda v: 0.1 <= v <= 1.0,
+        "must be a number between 0.1 and 1.0",
+    ),
+    "cursor": (str, None, "must be a string"),
+    "debug": (bool, None, "must be true or false"),
+    "capture_window_only": (bool, None, "must be true or false"),
+    "verbose": (bool, None, "must be true or false"),
+    "countdown": (int, lambda v: v >= 0, "must be a non-negative integer"),
+    "no_keys": (bool, None, "must be true or false"),
+    "key_interval": (int, lambda v: v > 0, "must be a positive integer"),
+    "lang": (
+        (str, type(None)),
+        lambda v: v is None or (isinstance(v, str) and len(v) == 2),
+        "must be a 2-letter language code (e.g. 'de', 'en') or null",
+    ),
+}
 
 # Default YAML content written when config file does not exist
 _DEFAULT_YAML_CONTENT = """# wsr – Wayland Session Recorder
@@ -30,6 +68,36 @@ lang: null
 
 # Keys whose values are paths to expand with expanduser
 _PATH_KEYS = frozenset({"location", "style", "cursor", "out"})
+
+
+def validate_config(config: dict) -> list[str]:
+    """
+    Validate config values against schema.
+
+    Args:
+        config: Configuration dictionary to validate.
+
+    Returns:
+        List of error messages (empty if valid).
+    """
+    errors = []
+
+    for key, (expected_type, validator, error_msg) in _CONFIG_SCHEMA.items():
+        if key not in config:
+            continue
+
+        value = config[key]
+
+        # Type check
+        if not isinstance(value, expected_type):
+            errors.append(f"{key}: {error_msg} (got {type(value).__name__})")
+            continue
+
+        # Custom validator
+        if validator is not None and not validator(value):
+            errors.append(f"{key}: {error_msg} (got {value!r})")
+
+    return errors
 
 
 def get_config_dir():
@@ -125,6 +193,16 @@ def load_config():
     for key in defaults:
         if key in data:
             merged[key] = data[key]
+
+    # Validate merged config
+    errors = validate_config(merged)
+    if errors:
+        error_list = "\n  - ".join(errors)
+        raise ConfigError(
+            f"Invalid configuration in {path}:\n  - {error_list}\n"
+            f"Fix the config file or delete it to reset to defaults."
+        )
+
     return _expand_paths(merged)
 
 

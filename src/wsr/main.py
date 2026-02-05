@@ -14,7 +14,7 @@ from .report_generator import ReportGenerator
 from .monitor_manager import MonitorManager
 from .key_buffer import KeyBuffer
 from .i18n import _, init_i18n, _instance
-from .config import load_config, resolve_output_path, resolve_style_path
+from .config import load_config, resolve_output_path, resolve_style_path, ConfigError
 
 # Configure logging
 logging.basicConfig(
@@ -224,7 +224,11 @@ def main():
     # Register signal handler
     signal.signal(signal.SIGINT, signal_handler)
 
-    args = parse_arguments()
+    try:
+        args = parse_arguments()
+    except ConfigError as e:
+        print(f"Configuration error:\n{e}", file=sys.stderr)
+        sys.exit(1)
 
     # Initialize i18n
     init_i18n(args.lang)
