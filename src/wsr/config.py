@@ -3,6 +3,8 @@ Configuration loading for wsr.
 Uses XDG Base Directory: $XDG_CONFIG_HOME/wsr/wsr.yaml (default ~/.config/wsr/wsr.yaml).
 Priority: CLI > wsr.yaml > hardcoded defaults.
 """
+from __future__ import annotations
+
 import os
 import logging
 from typing import Callable, Optional, Union

@@ -74,9 +74,10 @@ def send_notification(title, message, file_path=None):
         try:
             if file_path:
                 abs_path = os.path.abspath(file_path)
+                open_label = _('gui_open')
                 inner_cmd = (
-                    f'ACTION=$(notify-send "{title}" "{message}" ' 
-                    f'--action="default={_('gui_open')}" -i info); ' 
+                    f'ACTION=$(notify-send "{title}" "{message}" '
+                    f'--action="default={open_label}" -i info); '
                     f'[ "$ACTION" == "default" ] && xdg-open "{abs_path}"'
                 )
                 subprocess.Popen(
@@ -117,9 +118,10 @@ def send_notification(title, message, file_path=None):
         if file_path:
             abs_path = os.path.abspath(file_path)
             # Use a shell script to catch the action
+            open_label = _('gui_open')
             inner_cmd = (
-                f'ACTION=$(notify-send "{title}" "{message}" ' 
-                f'--action="default={_('gui_open')}" -i info); ' 
+                f'ACTION=$(notify-send "{title}" "{message}" '
+                f'--action="default={open_label}" -i info); '
                 f'[ "$ACTION" == "default" ] && xdg-open "{abs_path}"'
             )
             subprocess.Popen(
