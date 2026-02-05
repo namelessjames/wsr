@@ -25,7 +25,7 @@ A modern Python rebuild of `xsr` for Wayland environments. WSR records user acti
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/wsr.git
+git clone https://github.com/namelessjames/wsr.git
 cd wsr
 
 # Create virtual environment and install
