@@ -13,9 +13,13 @@ class InputManager:
     Manages global input devices and listens for keyboard and mouse events.
     """
 
-    def __init__(self):
+    def __init__(self, cursor_position_fn=None):
         """
         Initializes the InputManager with default settings.
+
+        Args:
+            cursor_position_fn: Callback that returns (x, y) cursor position.
+                                If None, cursor position will be (0, 0) on clicks.
         """
         self.devices = []
         self.mouse_devices = []
@@ -24,13 +28,7 @@ class InputManager:
         self.thread = None
         self.event_queue = queue.Queue()
         self.log_keys = True
-
-        # Virtual mouse position (relative tracking)
-        # Default starting position
-        self.mouse_x = 960
-        self.mouse_y = 540
-        self.screen_width = 1920
-        self.screen_height = 1080
+        self.cursor_position_fn = cursor_position_fn
 
     def find_devices(self):
         """
@@ -137,19 +135,8 @@ class InputManager:
         """
         Processes a single input event.
         """
-        # --- Mouse Movement ---
-        if event.type == evdev.ecodes.EV_REL:
-            if event.code == evdev.ecodes.REL_X:
-                self.mouse_x += event.value
-            elif event.code == evdev.ecodes.REL_Y:
-                self.mouse_y += event.value
-
-            # Clamp to screen size
-            self.mouse_x = max(0, min(self.mouse_x, self.screen_width))
-            self.mouse_y = max(0, min(self.mouse_y, self.screen_height))
-
-        # --- Key Press ---
-        elif event.type == evdev.ecodes.EV_KEY:
+        # Only handle key events (includes mouse buttons)
+        if event.type == evdev.ecodes.EV_KEY:
             # Mouse buttons are also EV_KEY
             is_mbutton = event.code in [
                 evdev.ecodes.BTN_LEFT,
@@ -160,14 +147,20 @@ class InputManager:
             if is_mbutton:
                 if event.value == 1:
                     btn_name = evdev.ecodes.BTN[event.code]
-                    logger.info(
-                        f"Mausklick: {btn_name} bei {self.mouse_x},{self.mouse_y}"
-                    )
+                    # Get real cursor position from compositor
+                    x, y = 0, 0
+                    if self.cursor_position_fn:
+                        pos = self.cursor_position_fn()
+                        if pos:
+                            x, y = pos
+                        else:
+                            logger.warning("cursor_position_fn returned None")
+                    logger.info(f"Mausklick: {btn_name} bei {x},{y}")
                     self.event_queue.put({
                         'type': 'click',
                         'button': btn_name,
-                        'x': self.mouse_x,
-                        'y': self.mouse_y,
+                        'x': x,
+                        'y': y,
                         'time': time.time()
                     })
             elif self.log_keys and event.value == 1:  # Key Down

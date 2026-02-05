@@ -64,3 +64,21 @@ class MonitorManager:
             if mon['name'] == monitor_name:
                 return x - mon['x'], y - mon['y']
         return x, y
+
+    def get_cursor_position(self):
+        """
+        Returns current cursor position from Hyprland.
+        Returns (x, y) tuple or None on failure.
+        """
+        try:
+            result = subprocess.run(
+                ["hyprctl", "cursorpos"],
+                capture_output=True,
+                text=True
+            )
+            if result.returncode == 0:
+                parts = result.stdout.strip().split(", ")
+                return int(parts[0]), int(parts[1])
+        except Exception as e:
+            logger.debug(f"hyprctl cursorpos failed: {e}")
+        return None
