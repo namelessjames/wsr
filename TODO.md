@@ -29,10 +29,10 @@
   - Makefile it install, uninstall, build
   - python setup bereits vorhanden
 
-- Ersetze '/home/martinsauerbrey' durch generische und gegebenenfalls dynamische pfade, damit nutzer das venv in dem ordner erstellen können, wo das repo hin geklont wurde
+- [x] ~~Ersetze '/home/martinsauerbrey' durch generische und gegebenenfalls dynamische pfade, damit nutzer das venv in dem ordner erstellen können, wo das repo hin geklont wurde~~
 
 ## UI/UX Verbesserungen
-- Erweiter das waybar-modul, sodass nutzer entscheiden können, ob der recording-zustand blinken soll oder nicht (in der waybar conf file, für das custom-wsr-modul)
+- [x] ~~Erweiter das waybar-modul, sodass nutzer entscheiden können, ob der recording-zustand blinken soll oder nicht (in der waybar conf file, für das custom-wsr-modul). Außerdem soll der Countdown gezeigt werden können, wenn Nutzer das möchten.~~ 
 - Aktiviere verbose-output im terminal via --verbose|-v, ansonsten wird nichts ausgegeben.
 
 ## Funktionalität & Features
