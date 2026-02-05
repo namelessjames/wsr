@@ -9,6 +9,7 @@ import subprocess
 # Local package imports
 from .input_manager import InputManager
 from .screenshot_engine import ScreenshotEngine
+from .screenshot_worker import ScreenshotWorker
 from .report_generator import ReportGenerator
 from .monitor_manager import MonitorManager
 from .key_buffer import KeyBuffer
@@ -267,6 +268,7 @@ def main():
 
     input_mgr.log_keys = not args.no_keys
     screenshot_engine = ScreenshotEngine()
+    screenshot_worker = ScreenshotWorker(screenshot_engine, max_workers=2)
 
     # Resolve style path and get language for report
     style_path = resolve_style_path(args.style)
@@ -330,19 +332,17 @@ def main():
                     logger.info(
                         _("click_on_monitor", name=mon_name, x=rel_x, y=rel_y)
                     )
-                    # Capture and compress immediately to save RAM
-                    # (PIL.Image = 31.6 MB/4K, compressed bytes = ~100 KB)
-                    img_bytes, mime_type = screenshot_engine.capture_with_cursor_compressed(
-                        rel_x, rel_y,
-                        monitor_name=mon_name,
-                        format=args.image_format,
-                        quality=int(args.image_quality * 100)
-                    )
-                    if img_bytes:
-                        event['screenshot_bytes'] = img_bytes
-                        event['screenshot_mime'] = mime_type
-
+                    # Event sofort zur Liste hinzufügen (ohne Screenshot)
                     captured_events.append(event)
+                    # Screenshot asynchron anfordern - wird in-place zum Event hinzugefügt
+                    screenshot_worker.request_screenshot(
+                        event,
+                        mon_name,
+                        rel_x,
+                        rel_y,
+                        image_format=args.image_format,
+                        image_quality=int(args.image_quality * 100)
+                    )
                 else:
                     captured_events.append(event)
 
@@ -357,6 +357,14 @@ def main():
     finally:
         if 'input_mgr' in locals():
             input_mgr.stop()
+
+        # Warte auf ausstehende Screenshots (mit Timeout)
+        if 'screenshot_worker' in locals():
+            pending = screenshot_worker.pending_count()
+            if pending > 0:
+                logger.info(_("waiting_screenshots", n=pending))
+            screenshot_worker.wait_for_pending(timeout=5.0)
+            screenshot_worker.shutdown(wait=False)
 
         if captured_events:
             logger.info(_("generating_report", n=len(captured_events)))

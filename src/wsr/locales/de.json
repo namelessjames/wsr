@@ -22,5 +22,6 @@
     "abort_user": "Abbruch durch Benutzer. Beende...",
     "gui_open": "\u00d6ffnen",
     "tooltip_active": "WSR: Aufnahme l\u00e4uft. Klicken zum Beenden.",
-    "tooltip_idle": "WSR: Inaktiv. Klicken zum Starten."
+    "tooltip_idle": "WSR: Inaktiv. Klicken zum Starten.",
+    "waiting_screenshots": "Warte auf {n} ausstehende Screenshots..."
 }
