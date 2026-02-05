@@ -1,6 +1,7 @@
 import subprocess
 import json
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +16,19 @@ class MonitorManager:
         Initializes the MonitorManager and refreshes the layout.
         """
         self.monitors = []
+        self._last_refresh = 0.0
+        self._refresh_cooldown = 5.0  # Seconds between refresh attempts
         self.refresh()
+
+    def _should_refresh(self):
+        """Check if cooldown has elapsed since last refresh."""
+        return (time.time() - self._last_refresh) > self._refresh_cooldown
 
     def refresh(self):
         """
         Fetches the current monitor layout using hyprctl.
         """
+        self._last_refresh = time.time()
         self.monitors = []
         try:
             # Try Hyprland
@@ -49,11 +57,24 @@ class MonitorManager:
     def get_monitor_at(self, x, y):
         """
         Returns the name of the monitor containing coordinates (x, y).
+        Triggers refresh if coordinates are outside known monitors.
         """
         for mon in self.monitors:
             if (mon['x'] <= x < mon['x'] + mon['width'] and
                     mon['y'] <= y < mon['y'] + mon['height']):
                 return mon['name']
+
+        # Coordinates outside known monitors - maybe layout changed
+        if self._should_refresh():
+            logger.debug(f"Coordinates ({x}, {y}) outside known monitors, refreshing...")
+            self.refresh()
+
+            # Retry after refresh
+            for mon in self.monitors:
+                if (mon['x'] <= x < mon['x'] + mon['width'] and
+                        mon['y'] <= y < mon['y'] + mon['height']):
+                    return mon['name']
+
         return None
 
     def get_relative_coordinates(self, x, y, monitor_name):
