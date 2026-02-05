@@ -261,33 +261,38 @@ def main():
 
     logger.info(_("recording_started"))
 
-    monitor_mgr = MonitorManager()
-    input_mgr = InputManager(cursor_position_fn=monitor_mgr.get_cursor_position)
-    key_buffer = KeyBuffer(args.key_interval)
-
-    if monitor_mgr.monitors:
-        max_x = max(m['x'] + m['width'] for m in monitor_mgr.monitors)
-        max_y = max(m['y'] + m['height'] for m in monitor_mgr.monitors)
-        logger.info(_("virtual_desktop_size", width=max_x, height=max_y))
-
-    input_mgr.log_keys = not args.no_keys
-    screenshot_engine = ScreenshotEngine()
-    screenshot_worker = ScreenshotWorker(screenshot_engine, max_workers=2)
-
-    # Resolve style path and get language for report
-    style_path = resolve_style_path(args.style)
-    lang = _instance.lang if _instance else "en"
-    report_gen = ReportGenerator(
-        output_path,
-        lang=lang,
-        custom_style_path=style_path,
-        image_format=args.image_format,
-        image_quality=args.image_quality
-    )
-
+    # Initialize BEFORE try-block, set to None for clean finally handling
+    input_mgr = None
+    screenshot_worker = None
+    report_gen = None
     captured_events = []
+    error_occurred = False
 
     try:
+        monitor_mgr = MonitorManager()
+        input_mgr = InputManager(cursor_position_fn=monitor_mgr.get_cursor_position)
+        key_buffer = KeyBuffer(args.key_interval)
+
+        if monitor_mgr.monitors:
+            max_x = max(m['x'] + m['width'] for m in monitor_mgr.monitors)
+            max_y = max(m['y'] + m['height'] for m in monitor_mgr.monitors)
+            logger.info(_("virtual_desktop_size", width=max_x, height=max_y))
+
+        input_mgr.log_keys = not args.no_keys
+        screenshot_engine = ScreenshotEngine()
+        screenshot_worker = ScreenshotWorker(screenshot_engine, max_workers=2)
+
+        # Resolve style path and get language for report
+        style_path = resolve_style_path(args.style)
+        lang = _instance.lang if _instance else "en"
+        report_gen = ReportGenerator(
+            output_path,
+            lang=lang,
+            custom_style_path=style_path,
+            image_format=args.image_format,
+            image_quality=args.image_quality
+        )
+
         input_mgr.start()
 
         while True:
@@ -354,34 +359,44 @@ def main():
 
     except KeyboardInterrupt:
         logger.info(_("recording_stopped"))
-    except Exception as e:
+    except (OSError, subprocess.CalledProcessError) as e:
+        # OSError: Screenshot-Tool nicht gefunden, Input-Device weg, etc.
+        # CalledProcessError: hyprctl, grim, etc. fehlgeschlagen
         error_msg = _("error_unexpected", error=str(e))
         logger.error(error_msg)
         send_notification(_("notif_error_title"), error_msg)
+        error_occurred = True
     finally:
-        if 'input_mgr' in locals():
+        # Cleanup: input_mgr is None if init failed, otherwise valid
+        if input_mgr is not None:
             input_mgr.stop()
 
-        # Warte auf ausstehende Screenshots (mit Timeout)
-        if 'screenshot_worker' in locals():
+        # Wait for pending screenshots (with timeout)
+        if screenshot_worker is not None:
             pending = screenshot_worker.pending_count()
             if pending > 0:
                 logger.info(_("waiting_screenshots", n=pending))
             screenshot_worker.wait_for_pending(timeout=5.0)
             screenshot_worker.shutdown(wait=False)
 
-        if captured_events:
-            logger.info(_("generating_report", n=len(captured_events)))
-            report_gen.generate(captured_events)
-            send_notification(
-                _("notif_success_title"),
-                _("notif_success_message", path=output_path),
-                file_path=output_path
-            )
-        else:
+        # Report generation - protected with its own try/except
+        if captured_events and not error_occurred:
+            try:
+                logger.info(_("generating_report", n=len(captured_events)))
+                report_gen.generate(captured_events)
+                send_notification(
+                    _("notif_success_title"),
+                    _("notif_success_message", path=output_path),
+                    file_path=output_path
+                )
+            except Exception as e:
+                # Blankes except hier ist OK - letzter Ausweg vor dem Exit
+                logger.error(f"Report generation failed: {e}")
+                sys.exit(1)
+        elif not captured_events:
             logger.warning(_("no_events"))
 
-        sys.exit(0)
+        sys.exit(1 if error_occurred else 0)
 
 
 if __name__ == "__main__":
