@@ -11,6 +11,12 @@ logger = logging.getLogger(__name__)
 class InputManager:
     """
     Manages global input devices and listens for keyboard and mouse events.
+    
+    Can be used as a context manager:
+        with InputManager() as mgr:
+            mgr.start()
+            # ... event loop ...
+        # stop() called automatically
     """
 
     def __init__(self, cursor_position_fn=None):
@@ -29,6 +35,15 @@ class InputManager:
         self.event_queue = queue.Queue()
         self.log_keys = True
         self.cursor_position_fn = cursor_position_fn
+
+    def __enter__(self):
+        """Context manager entry - returns self, does NOT auto-start."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - stops the listener."""
+        self.stop()
+        return False  # Don't suppress exceptions
 
     def find_devices(self):
         """
