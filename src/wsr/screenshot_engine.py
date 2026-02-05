@@ -111,3 +111,53 @@ class ScreenshotEngine:
 
         combined.alpha_composite(self.cursor_icon, (int(x), int(y)))
         return combined
+
+    def capture_with_cursor_compressed(self, x, y, monitor_name=None, 
+                                        format="webp", quality=80):
+        """
+        Captures a screenshot with cursor overlay and returns compressed bytes.
+        
+        This is the memory-efficient path: instead of holding a 31.6 MB PIL.Image
+        in RAM, we compress immediately to ~50-200 KB.
+        
+        Args:
+            x: Cursor x position (relative to monitor)
+            y: Cursor y position (relative to monitor)
+            monitor_name: Target monitor (None for primary)
+            format: Image format ('webp', 'jpg', 'jpeg', 'png')
+            quality: Compression quality for lossy formats (1-100)
+            
+        Returns:
+            tuple: (bytes, mime_type) or (None, None) on failure
+        """
+        img = self.capture(monitor_name)
+        if img is None:
+            return None, None
+        
+        # Add cursor overlay
+        img = self.add_cursor(img, x, y)
+        if img is None:
+            return None, None
+        
+        buffered = io.BytesIO()
+        
+        if format == "webp":
+            img.save(buffered, format="WEBP", quality=quality)
+            return buffered.getvalue(), "image/webp"
+        elif format in ("jpg", "jpeg"):
+            # JPEG doesn't support alpha - composite onto white background
+            if img.mode in ("RGBA", "LA", "P"):
+                background = Image.new("RGB", img.size, (255, 255, 255))
+                if img.mode == "P":
+                    img = img.convert("RGBA")
+                if img.mode == "RGBA":
+                    background.paste(img, mask=img.split()[3])
+                else:
+                    background.paste(img)
+                img = background
+            img.save(buffered, format="JPEG", quality=quality)
+            return buffered.getvalue(), "image/jpeg"
+        else:
+            # PNG - lossless, no quality param
+            img.save(buffered, format="PNG")
+            return buffered.getvalue(), "image/png"
