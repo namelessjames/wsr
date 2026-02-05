@@ -7,6 +7,7 @@ name = "wsr"
 version = "0.1.0"
 description = "Wayland Session Recorder (Python Port of xsr)"
 readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.7"
 dependencies = [
     "evdev",
