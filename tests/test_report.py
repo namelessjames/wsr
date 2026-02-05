@@ -7,8 +7,10 @@ import tempfile
 class TestReportGenerator(unittest.TestCase):
     def test_img_to_base64(self):
         gen = ReportGenerator("dummy.html")
+        # _img_to_base64 now expects an event dict, not a raw Image
         img = Image.new("RGB", (10, 10), "red")
-        b64 = gen._img_to_base64(img)
+        event = {'screenshot': img}
+        b64 = gen._img_to_base64(event)
         self.assertTrue(b64.startswith("data:image/png;base64,"))
 
     def test_generate_report(self):
