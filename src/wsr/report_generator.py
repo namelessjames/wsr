@@ -123,9 +123,29 @@ class ReportGenerator:
 </html>
 """
 
-    def _img_to_base64(self, pil_img):
+    def _img_to_base64(self, event):
+        """
+        Returns Base64 data URI from event's screenshot data.
+        
+        Supports two formats:
+        - New: pre-compressed bytes in event['screenshot_bytes'] + event['screenshot_mime']
+        - Legacy: PIL.Image in event['screenshot'] (for backwards compatibility)
+        """
+        # New format: already compressed bytes (memory-efficient path)
+        if 'screenshot_bytes' in event:
+            img_str = base64.b64encode(event['screenshot_bytes']).decode("utf-8")
+            return f"data:{event['screenshot_mime']};base64,{img_str}"
+        
+        # Legacy format: PIL.Image (kept for backwards compatibility)
+        if 'screenshot' in event:
+            return self._legacy_pil_to_base64(event['screenshot'])
+        
+        return ""
+
+    def _legacy_pil_to_base64(self, pil_img):
         """
         Converts a PIL Image to a Base64 string using configured format and quality.
+        Legacy path - only used if screenshot wasn't pre-compressed.
         """
         if pil_img is None:
             return ""
@@ -189,9 +209,10 @@ class ReportGenerator:
                 desc = f"{_('Ereignis')}: {event['type']}"
 
             img_tag = ""
-            if 'screenshot' in event:
-                b64_img = self._img_to_base64(event['screenshot'])
-                img_tag = f'<img src="{b64_img}" alt="Screenshot">'
+            if 'screenshot_bytes' in event or 'screenshot' in event:
+                b64_img = self._img_to_base64(event)
+                if b64_img:
+                    img_tag = f'<img src="{b64_img}" alt="Screenshot">'
 
             step_html = f"""
             <div class="step">

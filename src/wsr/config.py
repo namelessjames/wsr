@@ -16,8 +16,8 @@ location: "~/Pictures/wsr/"
 filename_format: "report-{%datetime}.html"
 out: "output.html"
 style: "~/.config/wsr/style.css"
-image_format: "png"
-image_quality: 0.9
+image_format: "webp"
+image_quality: 0.8
 cursor: "system"
 debug: false
 capture_window_only: false
@@ -57,8 +57,8 @@ def get_default_config():
         "filename_format": "report-{%datetime}.html",
         "out": "output.html",
         "style": "~/.config/wsr/style.css",
-        "image_format": "png",
-        "image_quality": 0.9,
+        "image_format": "webp",
+        "image_quality": 0.8,
         "cursor": "system",
         "debug": False,
         "capture_window_only": False,

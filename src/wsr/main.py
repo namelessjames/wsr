@@ -330,12 +330,17 @@ def main():
                     logger.info(
                         _("click_on_monitor", name=mon_name, x=rel_x, y=rel_y)
                     )
-                    shot = screenshot_engine.capture(monitor_name=mon_name)
-                    if shot:
-                        shot_with_cursor = screenshot_engine.add_cursor(
-                            shot, rel_x, rel_y
-                        )
-                        event['screenshot'] = shot_with_cursor
+                    # Capture and compress immediately to save RAM
+                    # (PIL.Image = 31.6 MB/4K, compressed bytes = ~100 KB)
+                    img_bytes, mime_type = screenshot_engine.capture_with_cursor_compressed(
+                        rel_x, rel_y,
+                        monitor_name=mon_name,
+                        format=args.image_format,
+                        quality=int(args.image_quality * 100)
+                    )
+                    if img_bytes:
+                        event['screenshot_bytes'] = img_bytes
+                        event['screenshot_mime'] = mime_type
 
                     captured_events.append(event)
                 else:
