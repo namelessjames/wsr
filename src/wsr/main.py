@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import signal
 import sys
@@ -23,6 +24,31 @@ logging.basicConfig(
     datefmt='%H:%M:%S'
 )
 logger = logging.getLogger(__name__)
+
+# State file for Waybar module communication
+STATE_FILE = "/tmp/wsr_state.json"
+
+
+def write_state(state: str, **kwargs):
+    """Atomares Schreiben der State-Datei. Rename ist atomar auf POSIX."""
+    data = {"state": state, "pid": os.getpid(), **kwargs}
+    tmp = STATE_FILE + ".tmp"
+    try:
+        with open(tmp, "w") as f:
+            json.dump(data, f)
+        os.rename(tmp, STATE_FILE)
+    except OSError as e:
+        logger.debug(f"State-Datei konnte nicht geschrieben werden: {e}")
+
+
+def remove_state():
+    """State-Datei entfernen."""
+    try:
+        os.unlink(STATE_FILE)
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        logger.debug(f"State-Datei konnte nicht entfernt werden: {e}")
 
 
 def signal_handler(sig, frame):
@@ -251,14 +277,18 @@ def main():
 
     if args.countdown > 0:
         logger.info(_("starting_in", n=args.countdown))
+        write_state("countdown", end_time=time.time() + args.countdown)
         try:
             for i in range(args.countdown, 0, -1):
+                write_state("countdown", remaining=i, end_time=time.time() + i)
                 print(f"{i}...", end=" ", flush=True)
                 time.sleep(1)
             print("Start!")
         except KeyboardInterrupt:
+            remove_state()
             signal_handler(signal.SIGINT, None)
 
+    write_state("recording", start_time=time.time())
     logger.info(_("recording_started"))
 
     # Initialize BEFORE try-block, set to None for clean finally handling
@@ -367,6 +397,9 @@ def main():
         send_notification(_("notif_error_title"), error_msg)
         error_occurred = True
     finally:
+        # State-Datei aufräumen (für Waybar-Modul)
+        remove_state()
+
         # Cleanup: input_mgr is None if init failed, otherwise valid
         if input_mgr is not None:
             input_mgr.stop()

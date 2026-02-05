@@ -23,5 +23,7 @@
     "gui_open": "Open",
     "tooltip_active": "WSR: Recording active. Click to stop.",
     "tooltip_idle": "WSR: Inactive. Click to start.",
-    "waiting_screenshots": "Waiting for {n} pending screenshots..."
+    "waiting_screenshots": "Waiting for {n} pending screenshots...",
+    "countdown_text": "{n}...",
+    "tooltip_countdown": "Starting in {n} seconds"
 }
