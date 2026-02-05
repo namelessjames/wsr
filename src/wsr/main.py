@@ -257,15 +257,12 @@ def main():
     logger.info(_("recording_started"))
 
     monitor_mgr = MonitorManager()
-    input_mgr = InputManager()
+    input_mgr = InputManager(cursor_position_fn=monitor_mgr.get_cursor_position)
     key_buffer = KeyBuffer(args.key_interval)
 
-    # Update input_mgr screen size based on monitors
     if monitor_mgr.monitors:
         max_x = max(m['x'] + m['width'] for m in monitor_mgr.monitors)
         max_y = max(m['y'] + m['height'] for m in monitor_mgr.monitors)
-        input_mgr.screen_width = max_x
-        input_mgr.screen_height = max_y
         logger.info(_("virtual_desktop_size", width=max_x, height=max_y))
 
     input_mgr.log_keys = not args.no_keys
