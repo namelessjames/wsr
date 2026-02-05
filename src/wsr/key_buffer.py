@@ -12,7 +12,12 @@ class KeyBuffer:
 
         Args:
             interval_ms (int): Max time in ms between keys to be grouped.
+
+        Raises:
+            ValueError: If interval_ms is negative.
         """
+        if interval_ms < 0:
+            raise ValueError("interval_ms must be non-negative")
         self.interval = interval_ms / 1000.0
         self.buffer = []
         self.last_time = 0
@@ -64,6 +69,8 @@ class KeyBuffer:
         """
         Internal helper to map Linux keycodes to readable characters.
         """
+        if not key_name:
+            return ""
         if key_name.startswith("KEY_"):
             k = key_name[4:]
             if len(k) == 1:
