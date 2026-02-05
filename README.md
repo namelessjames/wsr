@@ -1,68 +1,80 @@
 # WSR - Wayland Session Recorder
 
-Ein modernes Python-Rebuild von `xsr` für Wayland-Umgebungen. WSR zeichnet Benutzeraktionen (Klicks, Tastenanschläge) auf und generiert einen bebilderten HTML-Report.
+A modern Python rebuild of `xsr` for Wayland environments. WSR records user actions (clicks, keystrokes) and generates an illustrated HTML report.
 
 ## Features
-- **Globales Input-Tracking:** Erfasst Mausbewegungen, Klicks und Tastenanschläge via `/dev/input/`.
-- **Multi-Monitor Support:** Erkennt automatisch den aktiven Monitor und erstellt nur dort einen Screenshot.
-- **Keystroke Grouping:** Fasst schnell aufeinanderfolgende Tastenanschläge zu lesbaren Textblöcken zusammen.
-- **Screenshot-Engine:** Automatische Screenshots bei Mausklicks (unterstützt `grim` für wlroots/Hyprland und `gnome-screenshot`).
-- **Cursor-Overlay:** Zeichnet den Mauszeiger an der korrekten Position in den Screenshot ein.
-- **Sicherheitsmodus:** Mit `--no-keys` können Tastatureingaben vom Log ausgeschlossen werden.
-- **Portabler HTML-Report:** Generiert eine einzige HTML-Datei mit eingebetteten Base64-Bildern.
 
-## Voraussetzungen
-- **Linux** mit Wayland.
-- **Screenshot-Tool:** 
-    - Für Hyprland/Sway: `grim` (empfohlen)
-    - Für GNOME: `gnome-screenshot`
-- **Berechtigungen:** Zugriff auf `/dev/input/` (siehe unten).
+- **Global Input Tracking:** Captures mouse movements, clicks, and keystrokes via `/dev/input/`.
+- **Multi-Monitor Support:** Automatically detects the active monitor and takes screenshots only on that display.
+- **Keystroke Grouping:** Combines rapid keystrokes into readable text blocks.
+- **Screenshot Engine:** Automatic screenshots on mouse clicks (supports `grim` for wlroots/Hyprland and `gnome-screenshot`).
+- **Cursor Overlay:** Draws the mouse cursor at the correct position in the screenshot.
+- **Privacy Mode:** Use `--no-keys` to exclude keyboard input from the log.
+- **Portable HTML Report:** Generates a single HTML file with embedded Base64 images.
+- **Internationalization:** Supports English and German locales.
+
+## Requirements
+
+- **Linux** with Wayland.
+- **Screenshot Tool:**
+  - For Hyprland/Sway: `grim` (recommended)
+  - For GNOME: `gnome-screenshot`
+- **Permissions:** Access to `/dev/input/` (see below).
 
 ## Installation
 
 ```bash
-# Repository klonen
-git clone <repository-url>
+# Clone repository
+git clone https://github.com/yourusername/wsr.git
 cd wsr
 
-# Virtual Environment erstellen und installieren
+# Create virtual environment and install
 python3 -m venv .venv
 source .venv/bin/activate
 pip install .
 ```
 
-## Benutzung
+### Arch Linux (AUR)
 
 ```bash
-# Einfacher Start (3 Sekunden Countdown)
-sudo -E wsr -o mein_report.html
+# Using PKGBUILD
+makepkg -si
+```
 
-# Ohne Tasten-Logging (nur Klicks & Screenshots)
+## Usage
+
+```bash
+# Basic start (3 second countdown)
+sudo -E wsr -o my_report.html
+
+# Without key logging (clicks & screenshots only)
 sudo -E wsr --no-keys
 
-# Tasten-Intervall anpassen (z.B. 800ms statt 500ms)
+# Adjust key interval (e.g., 800ms instead of 500ms)
 sudo -E wsr --key-interval 800
 
-# Hilfe anzeigen
+# Show help
 wsr --help
 ```
 
 ## Multi-Monitor Support
-WSR unterstützt unter Wayland (wlroots/Hyprland) das automatische Mapping von Klicks auf den entsprechenden Monitor. Dabei wird das Tool `hyprctl` genutzt, um das Monitor-Layout abzufragen. Screenshots werden dann nur für den betroffenen Bildschirm erstellt, was die Report-Größe reduziert und die Übersichtlichkeit erhöht.
+
+WSR supports automatic mapping of clicks to the corresponding monitor under Wayland (wlroots/Hyprland). It uses `hyprctl` to query the monitor layout. Screenshots are then taken only for the affected display, reducing report size and improving clarity.
 
 ## Waybar Integration
-WSR kann direkt in Waybar integriert werden.
 
-1. **Sudoers-Regel (Wichtig für Start ohne Passwort):**
-   Damit Waybar `wsr` starten kann, fügen Sie folgendes mit `sudo visudo` hinzu:
+WSR can be integrated directly into Waybar.
+
+1. **Sudoers Rule (Required for passwordless start):**
+   To allow Waybar to start `wsr`, add the following using `sudo visudo`:
    ```text
    %input ALL=(ALL) NOPASSWD: /usr/local/bin/wsr
    ```
-   (Passen Sie den Pfad an, falls `wsr` woanders installiert ist, z.B. `which wsr`).
+   (Adjust the path if `wsr` is installed elsewhere, e.g., check with `which wsr`).
 
-2. **Waybar Konfiguration (`config`):**
+2. **Waybar Configuration (`config`):**
 
-   **Standard (mit Blink-Animation):**
+   **Standard (with blink animation):**
    ```json
    "custom/wsr": {
        "exec": "wsr-waybar",
@@ -78,7 +90,7 @@ WSR kann direkt in Waybar integriert werden.
    }
    ```
 
-   **Mit Countdown-Anzeige:**
+   **With countdown display:**
    ```json
    "custom/wsr": {
        "exec": "wsr-waybar --show-countdown",
@@ -93,18 +105,18 @@ WSR kann direkt in Waybar integriert werden.
        "on-click": "wsr-waybar --toggle"
    }
    ```
-   > **⚠️ WICHTIG:** Für die Countdown-Anzeige muss `interval` auf `1` gesetzt werden!
+   > **Note:** For countdown display, `interval` must be set to `1`!
 
-   **Ohne Blink-Animation:**
+   **Without blink animation:**
    ```json
    "exec": "wsr-waybar --no-blink"
    ```
 
-   **Verfügbare Argumente:**
-   - `--show-countdown` — Zeigt den Countdown im Modul-Text an
-   - `--no-blink` — Deaktiviert die Blink-Animation während der Aufnahme
-   - `--toggle` — Startet/Stoppt die Aufnahme (für `on-click`)
-   - `--lang de|en` — Sprache für Tooltips
+   **Available arguments:**
+   - `--show-countdown` — Shows the countdown in the module text
+   - `--no-blink` — Disables blink animation during recording
+   - `--toggle` — Starts/stops recording (for `on-click`)
+   - `--lang de|en` — Language for tooltips
 
 3. **Waybar Style (`style.css`):**
    ```css
@@ -127,21 +139,33 @@ WSR kann direkt in Waybar integriert werden.
    }
    ```
 
-## Ausführung ohne Root (sudo)
-Um WSR ohne `sudo` auszuführen, muss Ihr Benutzer Zugriff auf die Input-Geräte haben.
+## Running Without Root (sudo)
 
-1. Erstellen Sie eine udev-Regel:
+To run WSR without `sudo`, your user needs access to the input devices.
+
+1. Create a udev rule:
    ```bash
    echo 'KERNEL=="event*", GROUP="input", MODE="0660"' | sudo tee /etc/udev/rules.d/99-input.rules
    ```
-2. Fügen Sie Ihren Benutzer der Gruppe `input` hinzu:
+2. Add your user to the `input` group:
    ```bash
    sudo usermod -aG input $USER
    ```
-3. Melden Sie sich neu an.
+3. Log out and log back in.
 
-## Entwicklung & Tests
+## Development & Testing
+
 ```bash
-# Tests ausführen
-PYTHONPATH=. python3 -m unittest discover tests
+# Run tests
+make test
+
+# Run linting
+make lint
+
+# Build package
+make build
 ```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
