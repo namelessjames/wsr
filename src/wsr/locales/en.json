@@ -22,5 +22,6 @@
     "abort_user": "Aborted by user. Exiting...",
     "gui_open": "Open",
     "tooltip_active": "WSR: Recording active. Click to stop.",
-    "tooltip_idle": "WSR: Inactive. Click to start."
+    "tooltip_idle": "WSR: Inactive. Click to start.",
+    "waiting_screenshots": "Waiting for {n} pending screenshots..."
 }
