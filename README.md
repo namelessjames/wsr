@@ -61,6 +61,8 @@ WSR kann direkt in Waybar integriert werden.
    (Passen Sie den Pfad an, falls `wsr` woanders installiert ist, z.B. `which wsr`).
 
 2. **Waybar Konfiguration (`config`):**
+
+   **Standard (mit Blink-Animation):**
    ```json
    "custom/wsr": {
        "exec": "wsr-waybar",
@@ -76,12 +78,49 @@ WSR kann direkt in Waybar integriert werden.
    }
    ```
 
+   **Mit Countdown-Anzeige:**
+   ```json
+   "custom/wsr": {
+       "exec": "wsr-waybar --show-countdown",
+       "return-type": "json",
+       "interval": 1,
+       "format": "{icon} {text}",
+       "format-icons": {
+           "recording": "⏺",
+           "countdown": "⏳",
+           "idle": "📸"
+       },
+       "on-click": "wsr-waybar --toggle"
+   }
+   ```
+   > **⚠️ WICHTIG:** Für die Countdown-Anzeige muss `interval` auf `1` gesetzt werden!
+
+   **Ohne Blink-Animation:**
+   ```json
+   "exec": "wsr-waybar --no-blink"
+   ```
+
+   **Verfügbare Argumente:**
+   - `--show-countdown` — Zeigt den Countdown im Modul-Text an
+   - `--no-blink` — Deaktiviert die Blink-Animation während der Aufnahme
+   - `--toggle` — Startet/Stoppt die Aufnahme (für `on-click`)
+   - `--lang de|en` — Sprache für Tooltips
+
 3. **Waybar Style (`style.css`):**
    ```css
    #custom-wsr.recording {
        color: #ffffff;
        background: #ff0000;
        font-weight: bold;
+   }
+   #custom-wsr.blink {
+       animation: wsr-blink 0.5s infinite;
+   }
+   @keyframes wsr-blink {
+       50% { opacity: 0; }
+   }
+   #custom-wsr.countdown {
+       color: #ffcc00;
    }
    #custom-wsr.idle {
        color: #ffffff;
