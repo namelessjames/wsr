@@ -7,16 +7,22 @@ WSR (Wayland Session Recorder) ist ein Python-CLI-Tool, das Benutzerinteraktione
 ## Kernkonzept
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                          main.py                                │
-│                    (Orchestrator/Event-Loop)                    │
-└────────┬───────────┬───────────┬───────────┬───────────┬────────┘
-         │           │           │           │           │
-         ▼           ▼           ▼           ▼           ▼
-┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-│InputManager │ │ScreenshotEng│ │MonitorMgr   │ │ KeyBuffer   │ │ReportGen    │
-│ (evdev)     │ │ (grim/gnome)│ │ (hyprctl)   │ │ (Grouping)  │ │ (HTML+Base64)│
-└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                               main.py                                       │
+│                         (Orchestrator/Event-Loop)                           │
+└────────┬───────────┬───────────┬───────────┬───────────┬───────────┬────────┘
+         │           │           │           │           │           │
+         ▼           ▼           ▼           ▼           ▼           ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│InputManager │ │Screenshot   │ │MonitorMgr   │ │ KeyBuffer   │ │ReportGen    │ │Config      │
+│ (evdev)     │ │Worker+Engine│ │ (hyprctl)   │ │ (Grouping)  │ │(HTML+Base64)│ │ (Validation)│
+└─────────────┘ └──────┬──────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
+                       │
+                       ▼
+               ┌─────────────────┐
+               │ThreadPoolExecutor│
+               │ (2 Workers)      │
+               └─────────────────┘
 ```
 
 ## Modulstruktur
@@ -25,14 +31,15 @@ WSR (Wayland Session Recorder) ist ein Python-CLI-Tool, das Benutzerinteraktione
 src/wsr/
 ├── __init__.py          # Leer (Namespace-Package)
 ├── main.py              # CLI-Entry-Point, Event-Loop, Orchestrierung
-├── config.py            # YAML-Config, XDG-Pfade, CLI-Argument-Merge
+├── config.py            # YAML-Config mit Schema-Validierung, XDG-Pfade
 ├── input_manager.py     # /dev/input-Listener via evdev (Maus + Tastatur)
 ├── screenshot_engine.py # Screenshot-Capture (grim/gnome-screenshot) + Cursor-Overlay
+├── screenshot_worker.py # Async Screenshot-Queue via ThreadPoolExecutor
 ├── report_generator.py  # HTML-Report mit eingebetteten Base64-Bildern
 ├── monitor_manager.py   # Multi-Monitor-Layout-Erkennung via hyprctl
 ├── key_buffer.py        # Gruppierung schneller Tastenanschläge zu Textblöcken
 ├── i18n.py              # JSON-basierte Lokalisierung (de/en)
-├── waybar_module.py     # Waybar-Integration (JSON-Output, Toggle-Funktion)
+├── waybar_module.py     # Waybar-Integration (JSON-Output, Toggle, Blink/Countdown)
 └── locales/
     ├── de.json          # Deutsche Übersetzungen
     └── en.json          # Englische Übersetzungen
@@ -58,30 +65,53 @@ while True:
     # 1. KeyBuffer-Timeout prüfen → flush zu key_group
     # 2. Event-Queue abarbeiten:
     #    - 'key' → KeyBuffer.add() oder flush + add
-    #    - 'click' → KeyBuffer flush, Monitor ermitteln, Screenshot + Cursor
+    #    - 'click' → KeyBuffer flush, Monitor ermitteln, 
+    #                event sofort zu captured_events[], 
+    #                screenshot_worker.request_screenshot() (async)
     # 3. Sleep 50ms
+
+# On SIGINT:
+screenshot_worker.wait_for_pending()  # Auf ausstehende Screenshots warten
+report_gen.generate(captured_events)
 ```
 
 **Wichtige Datenstruktur (captured_events):**
 ```python
 [
-    {'type': 'click', 'button': 'BTN_LEFT', 'x': 1234, 'y': 567, 'time': float, 'screenshot': PIL.Image},
+    {
+        'type': 'click', 'button': 'BTN_LEFT', 'x': 1234, 'y': 567, 'time': float,
+        'screenshot_bytes': bytes,  # Async hinzugefügt durch ScreenshotWorker
+        'screenshot_mime': str      # z.B. "image/webp"
+    },
     {'type': 'key_group', 'text': 'Hallo Welt', 'time': float},
 ]
 ```
+
+**State-Datei für Waybar:** `/tmp/wsr_state.json` wird bei countdown/recording geschrieben, bei Exit entfernt.
 
 ---
 
 ### 2. `config.py` – Konfigurationsmanagement
 
-**Zweck:** XDG-konforme Config-Verwaltung mit Prioritätskette.
+**Zweck:** XDG-konforme Config-Verwaltung mit Prioritätskette und Schema-Validierung.
 
 **Priorität:** `CLI-Argumente > ~/.config/wsr/wsr.yaml > Hardcoded-Defaults`
 
 **Kritische Funktionen:**
-- `load_config()` – Lädt YAML, merged mit Defaults
+- `load_config()` – Lädt YAML, merged mit Defaults, validiert gegen Schema
+- `validate_config(config)` → `list[str]` – Prüft Typen und Wertebereiche, gibt Fehler zurück
 - `resolve_output_path(location, filename_format, explicit_out)` – Platzhalter-Ersetzung
 - `resolve_style_path()` – Custom-CSS-Pfad-Auflösung
+
+**Schema-Validierung (`_CONFIG_SCHEMA`):**
+```python
+{
+    "image_format": (str, lambda v: v in ("png", "jpg", "jpeg", "webp"), "..."),
+    "image_quality": ((int, float), lambda v: 0.1 <= v <= 1.0, "..."),
+    "countdown": (int, lambda v: v >= 0, "..."),
+    # ... weitere Keys
+}
+```
 
 **Platzhalter im Dateinamen:**
 | Platzhalter | Ersetzung |
@@ -91,6 +121,8 @@ while True:
 | `{%n}` | Inkrementelle Nummer (findet nächste freie) |
 
 **Config-Pfad:** `$XDG_CONFIG_HOME/wsr/wsr.yaml` (Default: `~/.config/wsr/wsr.yaml`)
+
+**Exception:** `ConfigError` wird bei ungültigen Werten geworfen – enthält formatierte Fehlerliste
 
 ---
 
@@ -134,10 +166,43 @@ while True:
 **Kritische Methoden:**
 - `capture(monitor_name=None)` → `PIL.Image`
 - `add_cursor(screenshot, x, y)` → Compositing des Cursor-Overlays
+- `capture_with_cursor_compressed(x, y, monitor_name, format, quality)` → `(bytes, mime_type)` – Speichereffiziente Variante, komprimiert sofort zu ~50-200 KB statt 31.6 MB PIL.Image im RAM zu halten
 
 **Cursor:** Einfaches weißes Polygon mit schwarzem Rand (24x24px). Wird dynamisch auf Screenshot composited.
 
 **Umgebungsvariable:** `WAYLAND_DISPLAY` muss gesetzt sein (daher `sudo -E`).
+
+---
+
+### 4b. `screenshot_worker.py` – Asynchrone Screenshot-Queue
+
+**Zweck:** Entkoppelt Screenshot-Capture von der Event-Loop, verhindert UI-Lag bei schnellen Klick-Sequenzen.
+
+**Klasse:** `ScreenshotWorker`
+
+**Architektur:**
+```
+main.py Event-Loop                    ThreadPoolExecutor (2 Workers)
+        │                                      │
+        ├── request_screenshot(event, ...) ────┤
+        │   (non-blocking, returns immediately)│
+        │                                      ▼
+        │                              ┌───────────────┐
+        │                              │ _do_screenshot│
+        │                              │ (background)  │
+        │                              └───────┬───────┘
+        │                                      │
+        │                    event['screenshot_bytes'] = bytes
+        │                    event['screenshot_mime'] = mime
+```
+
+**Kritische Methoden:**
+- `request_screenshot(event, monitor_name, rel_x, rel_y, format, quality)` – Queued Screenshot-Request, mutiert Event-Dict in-place
+- `wait_for_pending(timeout=5.0)` → `int` – Wartet auf alle ausstehenden Requests
+- `pending_count()` → `int` – Anzahl der noch nicht abgeschlossenen Requests
+- `shutdown(wait=True)` – Fährt ThreadPool runter
+
+**Design-Entscheidung:** Event-Dict wird in-place mutiert statt Rückgabewerte, da der Worker asynchron läuft und das Event bereits in `captured_events[]` liegt.
 
 ---
 
@@ -246,14 +311,25 @@ print(_("click_on_monitor", name="DP-1", x=100, y=200))  # → Formatiert
 
 **Entry-Point:** `wsr-waybar` (via pyproject.toml)
 
+**CLI-Parameter:**
+| Parameter | Effekt |
+|-----------|--------|
+| `--toggle` | Startet/Stoppt wsr |
+| `--no-blink` | Deaktiviert `blink` CSS-Klasse im recording-Zustand |
+| `--show-countdown` | Zeigt Countdown-Sekunden im Text |
+| `--lang` | Sprache für Tooltips |
+
 **JSON-Output für Waybar:**
 ```json
 {"text": "", "alt": "idle", "class": "idle", "tooltip": "Klicken zum Starten"}
-{"text": "", "alt": "recording", "class": "recording", "tooltip": "Aufnahme läuft..."}
+{"text": "", "alt": "recording", "class": "recording blink", "tooltip": "Aufnahme läuft..."}
+{"text": "3", "alt": "countdown", "class": "countdown", "tooltip": "Startet in 3..."}
 ```
 
+**State-Datei:** `/tmp/wsr_state.json` – Enthält `state`, `pid`, `remaining`/`end_time` für Koordination zwischen main.py und waybar_module.py
+
 **Toggle-Logik:**
-- Running: `pkill -INT -f wsr.main` (SIGINT → graceful shutdown)
+- Running: `os.kill(pid, SIGINT)` via State-Datei (kein pkill mehr, direkter PID)
 - Stopped: `sudo -E wsr ... &` (im Hintergrund)
 
 ---
@@ -281,20 +357,30 @@ User-Input (Maus/Tastatur)
          │   (get_monitor_at)             │
          │         │                      │
          │         ▼                      │
-         │   ScreenshotEngine             │
-         │   (capture + cursor)           │
+         │   ScreenshotWorker             │
+         │   (async queue)                │
          │         │                      │
+         │         ▼                      │
+         │   ThreadPoolExecutor ─────────►│ ScreenshotEngine.capture_with_cursor_compressed()
+         │   (background thread)          │ → event['screenshot_bytes'] = bytes
+         │         │                      │ → event['screenshot_mime'] = mime_type
          └─────────┴──────────────────────┘
                    │
                    ▼
             captured_events[]
+            (events mit screenshot_bytes/mime)
                    │
                    ▼ (on SIGINT)
+            wait_for_pending()  ← Wartet auf ausstehende Screenshots
+                   │
+                   ▼
             ReportGenerator
                    │
                    ▼
             output.html
 ```
+
+**Wichtig:** Screenshots werden nicht mehr synchron in der Event-Loop aufgenommen. Der Worker mutiert das Event-Dict asynchron in-place. Vor Report-Generierung muss `wait_for_pending()` aufgerufen werden.
 
 ---
 
@@ -394,14 +480,15 @@ sudo usermod -aG input $USER
 
 ```
 tests/
-├── test_cli.py         # CLI-Argument-Parsing
-├── test_config.py      # Config-Loading, Pfad-Resolution
-├── test_i18n.py        # Übersetzungen
-├── test_input.py       # InputManager (mocked)
-├── test_key_buffer.py  # KeyBuffer-Gruppierung
-├── test_monitor.py     # MonitorManager
-├── test_report.py      # ReportGenerator
-└── test_screenshot.py  # ScreenshotEngine
+├── test_cli.py              # CLI-Argument-Parsing
+├── test_config.py           # Config-Loading, Pfad-Resolution, Validierung
+├── test_i18n.py             # Übersetzungen
+├── test_input.py            # InputManager (mocked)
+├── test_key_buffer.py       # KeyBuffer-Gruppierung
+├── test_monitor.py          # MonitorManager
+├── test_report.py           # ReportGenerator
+├── test_screenshot.py       # ScreenshotEngine
+└── test_screenshot_worker.py # ScreenshotWorker (async queue)
 ```
 
 **Test ausführen:**
@@ -418,7 +505,10 @@ PYTHONPATH=. python3 -m unittest discover tests
 | CLI-Args ändern | `main.py` | `parse_arguments()` |
 | Neues Event-Type hinzufügen | `main.py` | Event-Loop in `main()` |
 | Screenshot-Backend erweitern | `screenshot_engine.py` | `_detect_backend()`, `capture()` |
+| Screenshot-Verarbeitung anpassen | `screenshot_worker.py` | `ScreenshotWorker._do_screenshot()` |
 | HTML-Styling ändern | `report_generator.py` | `_build_header()` |
-| Neue Config-Option | `config.py` | `get_default_config()`, `_DEFAULT_YAML_CONTENT` |
+| Neue Config-Option | `config.py` | `get_default_config()`, `_DEFAULT_YAML_CONTENT`, `_CONFIG_SCHEMA` |
+| Config-Validierung erweitern | `config.py` | `_CONFIG_SCHEMA`, `validate_config()` |
 | Übersetzung hinzufügen | `locales/*.json` | Key-Value hinzufügen |
 | Monitor-Support erweitern | `monitor_manager.py` | `refresh()` |
+| Waybar-Status erweitern | `waybar_module.py` | `get_status()` |
