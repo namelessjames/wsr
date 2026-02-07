@@ -1,9 +1,14 @@
 import json
 import os
+import re
 import locale
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Strict pattern for language codes – only lowercase ASCII, exactly 2 chars.
+_LANG_RE = re.compile(r"^[a-z]{2}$")
+
 
 class I18n:
     """
@@ -11,7 +16,10 @@ class I18n:
     """
     def __init__(self, lang=None):
         self.translations = {}
-        self.lang = lang or self._detect_language()
+        raw = lang or self._detect_language()
+        # Sanitize: only accept strictly valid language codes.
+        # Anything else falls back to 'en' – no path traversal, no injection.
+        self.lang = raw if _LANG_RE.match(raw) else "en"
         self._load_translations()
 
     def _detect_language(self):

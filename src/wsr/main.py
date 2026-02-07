@@ -59,6 +59,37 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 
+def _notify_and_open(title, message, file_path, preexec_fn=None, env=None):
+    """
+    Fire-and-forget: notify-send with action, then xdg-open if accepted.
+
+    Runs in a daemon thread because notify-send blocks until the user
+    clicks or the notification expires.
+    """
+    import threading
+
+    def _worker():
+        try:
+            open_label = _('gui_open')
+            result = subprocess.run(
+                ["notify-send", title, message,
+                 "--action=default=" + open_label, "-i", "info"],
+                capture_output=True, text=True,
+                preexec_fn=preexec_fn, env=env
+            )
+            if result.stdout.strip() == "default":
+                subprocess.Popen(
+                    ["xdg-open", file_path],
+                    preexec_fn=preexec_fn, env=env,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+        except Exception:
+            pass
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
 def send_notification(title, message, file_path=None):
     """
     Sends a system notification as the original user via notify-send.
@@ -73,18 +104,7 @@ def send_notification(title, message, file_path=None):
         # Not running as sudo, just send it
         try:
             if file_path:
-                abs_path = os.path.abspath(file_path)
-                open_label = _('gui_open')
-                inner_cmd = (
-                    f'ACTION=$(notify-send "{title}" "{message}" '
-                    f'--action="default={open_label}" -i info); '
-                    f'[ "$ACTION" == "default" ] && xdg-open "{abs_path}"'
-                )
-                subprocess.Popen(
-                    ["bash", "-c", inner_cmd],
-                    stderr=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL
-                )
+                _notify_and_open(title, message, os.path.abspath(file_path))
             else:
                 subprocess.Popen(
                     ["notify-send", title, message, "-i", "error"],
@@ -116,20 +136,9 @@ def send_notification(title, message, file_path=None):
             os.setuid(uid)
 
         if file_path:
-            abs_path = os.path.abspath(file_path)
-            # Use a shell script to catch the action
-            open_label = _('gui_open')
-            inner_cmd = (
-                f'ACTION=$(notify-send "{title}" "{message}" '
-                f'--action="default={open_label}" -i info); '
-                f'[ "$ACTION" == "default" ] && xdg-open "{abs_path}"'
-            )
-            subprocess.Popen(
-                ["bash", "-c", inner_cmd],
-                preexec_fn=drop_privileges,
-                env=env,
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL
+            _notify_and_open(
+                title, message, os.path.abspath(file_path),
+                preexec_fn=drop_privileges, env=env
             )
         else:
             subprocess.Popen(

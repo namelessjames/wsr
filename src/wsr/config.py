@@ -6,10 +6,14 @@ Priority: CLI > wsr.yaml > hardcoded defaults.
 from __future__ import annotations
 
 import os
+import re
 import logging
 from typing import Callable, Optional, Union
 
 logger = logging.getLogger(__name__)
+
+# Strict pattern for language codes – only lowercase ASCII, exactly 2 chars.
+_LANG_RE = re.compile(r"^[a-z]{2}$")
 
 
 class ConfigError(Exception):
@@ -43,8 +47,8 @@ _CONFIG_SCHEMA: dict[str, tuple[type | tuple[type, ...], Optional[Callable], str
     "key_interval": (int, lambda v: v > 0, "must be a positive integer"),
     "lang": (
         (str, type(None)),
-        lambda v: v is None or (isinstance(v, str) and len(v) == 2),
-        "must be a 2-letter language code (e.g. 'de', 'en') or null",
+        lambda v: v is None or (isinstance(v, str) and _LANG_RE.match(v) is not None),
+        "must be a 2-letter lowercase language code (e.g. 'de', 'en') or null",
     ),
 }
 

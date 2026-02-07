@@ -86,7 +86,9 @@ def get_status(show_countdown: bool = False, no_blink: bool = False) -> dict:
 
 
 def toggle_wsr():
-    """Starts or stops WSR."""
+    """
+    Starts or stops WSR.
+    """
     running, state = is_wsr_running()
     if running and state:
         # Send SIGINT to the actual PID
@@ -96,13 +98,16 @@ def toggle_wsr():
             # Fallback to pkill
             subprocess.run(["pkill", "-INT", "-f", "wsr.main"])
     else:
-        # Pass the current language to the new process if possible
-        lang_flag = ""
+        cmd = ["sudo", "-E", "wsr"]
         if _instance and _instance.lang:
-            lang_flag = f"--lang {_instance.lang}"
-
-        cmd = f"sudo -E wsr {lang_flag} -o ~/wsr_report.html > /dev/null 2>&1 &"
-        subprocess.Popen(["bash", "-c", cmd])
+            cmd.extend(["--lang", _instance.lang])
+        cmd.extend(["-o", os.path.expanduser("~/wsr_report.html")])
+        subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True
+        )
 
 
 def main():
