@@ -2,6 +2,7 @@ import subprocess
 import io
 import logging
 import os
+import tempfile
 from PIL import Image, ImageDraw
 
 logger = logging.getLogger(__name__)
@@ -83,15 +84,21 @@ class ScreenshotEngine:
                 return Image.open(io.BytesIO(result.stdout))
 
             elif self.backend == "gnome-screenshot":
-                temp_file = "/tmp/wsr_temp_shot.png"
-                subprocess.run(
-                    ["gnome-screenshot", "-f", temp_file],
-                    check=True
-                )
-                img = Image.open(temp_file)
-                img.load()
-                os.remove(temp_file)
-                return img
+                fd, temp_file = tempfile.mkstemp(suffix=".png", prefix="wsr_")
+                os.close(fd)
+                try:
+                    subprocess.run(
+                        ["gnome-screenshot", "-f", temp_file],
+                        check=True
+                    )
+                    img = Image.open(temp_file)
+                    img.load()
+                    return img
+                finally:
+                    try:
+                        os.unlink(temp_file)
+                    except OSError:
+                        pass
 
         except Exception as e:
             logger.error(f"Fehler bei Screenshot-Aufnahme ({self.backend}): {e}")
