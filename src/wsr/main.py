@@ -87,7 +87,7 @@ def _notify_and_open(title, message, file_path, preexec_fn=None, env=None):
         except Exception:
             pass
 
-    threading.Thread(target=_worker, daemon=True).start()
+    threading.Thread(target=_worker, daemon=False).start()
 
 
 def send_notification(title, message, file_path=None):
