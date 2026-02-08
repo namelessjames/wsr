@@ -7,7 +7,8 @@ arch=('any')
 url="https://github.com/namelessjames/wsr"
 license=('MIT')
 depends=('python' 'python-evdev' 'python-pillow' 'python-yaml')
-makedepends=('python-build' 'python-installer' 'python-wheel')
+makedepends=('python-build' 'python-installer' 'python-wheel' 'python-setuptools')
+checkdepends=('python-pytest')
 optdepends=(
     'grim: Screenshot-Tool fuer wlroots/Hyprland'
     'gnome-screenshot: Screenshot-Tool fuer GNOME'
@@ -18,6 +19,11 @@ sha256sums=('SKIP')
 build() {
     cd "$pkgname-$pkgver"
     python -m build --wheel --no-isolation
+}
+
+check() {
+    cd "$pkgname-$pkgver"
+    python -m pytest tests/ -v
 }
 
 package() {
