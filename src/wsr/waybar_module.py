@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import shutil
 import subprocess
 import sys
 import os
@@ -26,6 +27,9 @@ def is_pid_alive(pid: int) -> bool:
     """Prüft ob PID existiert (Signal 0 = nur prüfen)."""
     try:
         os.kill(pid, 0)
+        return True
+    except PermissionError:
+        # Process exists but belongs to another user (e.g. root via sudo)
         return True
     except OSError:
         return False
@@ -91,14 +95,20 @@ def toggle_wsr():
     """
     running, state = is_wsr_running()
     if running and state:
-        # Send SIGINT to the actual PID
+        pid = state["pid"]
+        # Try direct kill first, fall back to sudo kill (wsr runs as root)
         try:
-            os.kill(state["pid"], 2)  # SIGINT = 2
+            os.kill(pid, 2)  # SIGINT = 2
+        except PermissionError:
+            # Process belongs to root (started via sudo) – need sudo to signal it
+            subprocess.run(["sudo", "-n", "kill", "-INT", str(pid)],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except OSError:
             # Fallback to pkill
             subprocess.run(["pkill", "-INT", "-f", "wsr.main"])
     else:
-        cmd = ["sudo", "-E", "wsr"]
+        wsr_bin = shutil.which("wsr") or "wsr"
+        cmd = ["sudo", "-E", wsr_bin]
         if _instance and _instance.lang:
             cmd.extend(["--lang", _instance.lang])
         cmd.extend(["-o", os.path.expanduser("~/wsr_report.html")])

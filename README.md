@@ -77,6 +77,7 @@ Without `-o`, reports are saved to `~/Pictures/wsr/report-<datetime>.html`.
 | `--no-keys` | Disable keyboard logging | — |
 | `--key-interval` | Keystroke grouping interval (ms) | `500` |
 | `--lang` | Language (`de`, `en`) | System locale |
+| `--toggle` | Start/stop recording (Waybar integration) | — |
 | `-v, --verbose` | Debug logging | — |
 
 Defaults can be overridden via `wsr.yaml` (CLI takes priority).
@@ -91,10 +92,11 @@ Passwordless `sudo` for Waybar:
 sudo visudo -f /etc/sudoers.d/wsr
 ```
 ```text
-%input ALL=(ALL) NOPASSWD: /home/<user>/.local/bin/wsr
+%input ALL=(ALL) NOPASSWD:SETENV: /home/<user>/.local/bin/wsr, /usr/bin/kill
 ```
 
 Replace `<user>` with your username. Verify the path with `which wsr`.
+`SETENV:` is required so `sudo -E` can pass `WAYLAND_DISPLAY` to `grim`. `/usr/bin/kill` is needed to stop the root-owned recording process.
 
 ### 2. Waybar Config
 
@@ -108,14 +110,16 @@ Replace `<user>` with your username. Verify the path with `which wsr`.
         "recording": "⏺",
         "idle": ""
     },
-    "on-click": "wsr-waybar --toggle",
+    "on-click": "wsr --toggle",
     "signal": 8
 }
 ```
 
 For countdown display, use `"exec": "wsr-waybar --show-countdown"` with `"interval": 1` and add `"countdown": ""` to `format-icons`.
 
-**`wsr-waybar` arguments:**
+**`on-click` toggle:** `wsr --toggle` starts/stops recording. The `--toggle` flag is available on both `wsr` and `wsr-waybar`.
+
+**`wsr-waybar` arguments (status polling):**
 
 | Argument | Description |
 |---|---|

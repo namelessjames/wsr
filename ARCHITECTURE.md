@@ -54,7 +54,7 @@ src/wsr/
 **Purpose:** CLI parsing, event loop, signal handling, module coordination.
 
 **Critical Functions:**
-- `main()` – Initializes all modules, starts event loop
+- `main()` – Initializes all modules, starts event loop. Also handles `--toggle` (early exit before heavy init, delegates to `waybar_module.toggle_wsr()`)
 - `parse_arguments()` – CLI args with config merge (CLI > YAML > Defaults)
 - `signal_handler()` – Graceful shutdown on SIGINT (Ctrl+C)
 - `send_notification()` – Desktop notification via `notify-send` (as original user under sudo)
@@ -309,12 +309,12 @@ print(_("click_on_monitor", name="DP-1", x=100, y=200))  # → Formatted
 
 **Purpose:** Waybar custom module for status display and toggle.
 
-**Entry Point:** `wsr-waybar` (via pyproject.toml)
+**Entry Points:** `wsr-waybar` (status polling) and `wsr --toggle` (toggle via main entry point, delegates to `toggle_wsr()`)
 
-**CLI Parameters:**
+**CLI Parameters (`wsr-waybar`):**
 | Parameter | Effect |
 |-----------|--------|
-| `--toggle` | Starts/stops wsr |
+| `--toggle` | Starts/stops wsr (also available via `wsr --toggle`) |
 | `--no-blink` | Disables `blink` CSS class in recording state |
 | `--show-countdown` | Shows countdown seconds in text |
 | `--lang` | Language for tooltips |
@@ -329,8 +329,12 @@ print(_("click_on_monitor", name="DP-1", x=100, y=200))  # → Formatted
 **State File:** `/tmp/wsr_state.json` – Contains `state`, `pid`, `remaining`/`end_time` for coordination between main.py and waybar_module.py
 
 **Toggle Logic:**
-- Running: `os.kill(pid, SIGINT)` via state file (no pkill, direct PID)
-- Stopped: `sudo -E wsr ... &` (in background)
+- Running → Stop: `os.kill(pid, SIGINT)` via state file. Falls back to `sudo -n kill -INT <pid>` on `PermissionError` (wsr runs as root via sudo).
+- Stopped → Start: `sudo -E <full_path_to_wsr> ...` in background (`shutil.which("wsr")` resolves absolute path, required for sudoers NOPASSWD match).
+
+**PID Check (`is_pid_alive`):** `os.kill(pid, 0)` – treats `PermissionError` as alive (process exists but belongs to root).
+
+**Sudoers Requirements:** `NOPASSWD:SETENV:` for wsr binary (SETENV enables `-E` for `WAYLAND_DISPLAY`), plus `/usr/bin/kill` for stopping root-owned process.
 
 ---
 
@@ -428,6 +432,7 @@ User Input (Mouse/Keyboard)
 ┌────────────────────────────────────────────────────────────────┐
 │  sudo -E wsr                                                   │
 │  └── -E preserves WAYLAND_DISPLAY, XDG_RUNTIME_DIR, etc.      │
+│  └── Requires NOPASSWD:SETENV: in sudoers                     │
 └────────────────────────────────────────────────────────────────┘
                           │
     ┌─────────────────────┼─────────────────────┐
@@ -438,6 +443,12 @@ User Input (Mouse/Keyboard)
                            │                    │
                       Env variables       drop_privileges()
                       from -E             → Original user
+
+┌────────────────────────────────────────────────────────────────┐
+│  sudo -n kill -INT <pid>                                       │
+│  └── Used by toggle_wsr() to stop root-owned wsr process      │
+│  └── Requires NOPASSWD: /usr/bin/kill in sudoers              │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 **Alternative (without sudo):**
@@ -505,6 +516,7 @@ PYTHONPATH=. python3 -m unittest discover tests
 | Action | File | Function/Class |
 |--------|------|----------------|
 | Modify CLI args | `main.py` | `parse_arguments()` |
+| Toggle recording | `main.py` → `waybar_module.py` | `main()` early exit → `toggle_wsr()` |
 | Add new event type | `main.py` | Event loop in `main()` |
 | Extend screenshot backend | `screenshot_engine.py` | `_detect_backend()`, `capture()` |
 | Modify screenshot processing | `screenshot_worker.py` | `ScreenshotWorker._do_screenshot()` |

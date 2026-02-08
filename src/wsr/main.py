@@ -250,6 +250,19 @@ def parse_arguments():
         help="Sprache wählen (de, en). Standard: System-Sprache."
     )
 
+    parser.add_argument(
+        "--toggle",
+        action="store_true",
+        help="Aufnahme starten/stoppen (für Waybar on-click)"
+    )
+
+    # Accepted but only used by wsr-waybar (status polling).
+    # Must be here so `wsr --toggle --show-countdown` doesn't choke on argparse.
+    parser.add_argument("--show-countdown", action="store_true",
+                        help=argparse.SUPPRESS)
+    parser.add_argument("--no-blink", action="store_true",
+                        help=argparse.SUPPRESS)
+
     parser.set_defaults(**config)
     return parser.parse_args()
 
@@ -269,6 +282,13 @@ def main():
 
     # Initialize i18n
     init_i18n(args.lang)
+
+    # Handle --toggle: start/stop recording, then exit immediately.
+    # Must happen before any heavy init (evdev, screenshot engine, etc.)
+    if args.toggle:
+        from .waybar_module import toggle_wsr
+        toggle_wsr()
+        sys.exit(0)
 
     # Resolve output path from location + filename_format (or explicit -o)
     output_path = resolve_output_path(args.location, args.filename_format, args.out)
