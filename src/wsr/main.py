@@ -34,7 +34,8 @@ def write_state(state: str, **kwargs):
     data = {"state": state, "pid": os.getpid(), **kwargs}
     tmp = STATE_FILE + ".tmp"
     try:
-        with open(tmp, "w") as f:
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+        with os.fdopen(fd, "w") as f:
             json.dump(data, f)
         os.rename(tmp, STATE_FILE)
     except OSError as e:

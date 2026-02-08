@@ -129,7 +129,6 @@ def get_default_config():
     return {
         "location": "~/Pictures/wsr/",
         "filename_format": "report-{%datetime}.html",
-        "out": "output.html",
         "style": "~/.config/wsr/style.css",
         "image_format": "webp",
         "image_quality": 0.8,

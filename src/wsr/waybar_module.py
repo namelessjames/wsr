@@ -19,7 +19,7 @@ def read_state() -> dict | None:
     try:
         with open(STATE_FILE, "r") as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError):
         return None
 
 
@@ -111,7 +111,6 @@ def toggle_wsr():
         cmd = ["sudo", "-E", wsr_bin]
         if _instance and _instance.lang:
             cmd.extend(["--lang", _instance.lang])
-        cmd.extend(["-o", os.path.expanduser("~/wsr_report.html")])
         subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
