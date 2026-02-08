@@ -15,143 +15,147 @@ A modern Python rebuild of `xsr` for Wayland environments. WSR records user acti
 
 ## Requirements
 
-- **Linux** with Wayland.
+- **Linux** with Wayland
 - **Screenshot Tool:**
-  - For Hyprland/Sway: `grim` (recommended)
-  - For GNOME: `gnome-screenshot`
-- **Permissions:** Access to `/dev/input/` (see below).
+  - Hyprland/Sway: `grim`
+  - GNOME: `gnome-screenshot`
+- **Optional:** `hyprctl` for multi-monitor support (auto-detected)
+- **Permissions:** Read access to `/dev/input/` (via `sudo` or `input` group, see below)
 
 ## Installation
 
 ```bash
-# Clone repository
 git clone https://github.com/namelessjames/wsr.git
 cd wsr
-
-# Create virtual environment and install
-python3 -m venv .venv
-source .venv/bin/activate
-pip install .
+pipx install .
 ```
+
+This installs `wsr` and `wsr-waybar` to `~/.local/bin/`.
 
 ### Arch Linux (AUR)
 
 ```bash
-# Using PKGBUILD
 makepkg -si
+```
+
+### Development Setup
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
 
 ## Usage
 
 ```bash
-# Basic start (3 second countdown)
+# Start recording (3 second countdown, then Ctrl+C to stop)
+sudo -E wsr
+
+# Explicit output path
 sudo -E wsr -o my_report.html
 
 # Without key logging (clicks & screenshots only)
 sudo -E wsr --no-keys
-
-# Adjust key interval (e.g., 800ms instead of 500ms)
-sudo -E wsr --key-interval 800
-
-# Show help
-wsr --help
 ```
 
-## Multi-Monitor Support
+Stop recording with **Ctrl+C**. The report is generated on exit.
 
-WSR supports automatic mapping of clicks to the corresponding monitor under Wayland (wlroots/Hyprland). It uses `hyprctl` to query the monitor layout. Screenshots are then taken only for the affected display, reducing report size and improving clarity.
+Without `-o`, reports are saved to `~/Pictures/wsr/report-<datetime>.html`.
+
+### CLI Options
+
+| Option | Description | Default |
+|---|---|---|
+| `-o, --out` | Output file path | `~/Pictures/wsr/report-{datetime}.html` |
+| `-l, --location` | Target directory for reports | `~/Pictures/wsr/` |
+| `-f, --filename-format` | Filename format (`{%date}`, `{%datetime}`, `{%n}`) | `report-{%datetime}.html` |
+| `-s, --style` | Custom CSS file for the report | — |
+| `--image-format` | Screenshot format: `png`, `jpg`, `webp` | `png` |
+| `--image-quality` | Quality for jpg/webp (0.1–1.0) | `0.9` |
+| `--countdown` | Delay before start (seconds) | `3` |
+| `--no-keys` | Disable keyboard logging | — |
+| `--key-interval` | Keystroke grouping interval (ms) | `500` |
+| `--lang` | Language (`de`, `en`) | System locale |
+| `-v, --verbose` | Debug logging | — |
+
+Defaults can be overridden via `wsr.yaml` (CLI takes priority).
 
 ## Waybar Integration
 
-WSR can be integrated directly into Waybar.
+### 1. Sudoers Rule
 
-1. **Sudoers Rule (Required for passwordless start):**
-   To allow Waybar to start `wsr`, add the following using `sudo visudo`:
-   ```text
-   %input ALL=(ALL) NOPASSWD: /usr/local/bin/wsr
-   ```
-   (Adjust the path if `wsr` is installed elsewhere, e.g., check with `which wsr`).
+Passwordless `sudo` for Waybar:
 
-2. **Waybar Configuration (`config`):**
+```bash
+sudo visudo -f /etc/sudoers.d/wsr
+```
+```text
+%input ALL=(ALL) NOPASSWD: /home/<user>/.local/bin/wsr
+```
 
-   **Standard (with blink animation):**
-   ```json
-   "custom/wsr": {
-       "exec": "wsr-waybar",
-       "return-type": "json",
-       "interval": 2,
-       "format": "{icon}",
-       "format-icons": {
-           "recording": "⏺ REC",
-           "idle": "📸 WSR"
-       },
-       "on-click": "wsr-waybar --toggle",
-       "signal": 8
-   }
-   ```
+Replace `<user>` with your username. Verify the path with `which wsr`.
 
-   **With countdown display:**
-   ```json
-   "custom/wsr": {
-       "exec": "wsr-waybar --show-countdown",
-       "return-type": "json",
-       "interval": 1,
-       "format": "{icon} {text}",
-       "format-icons": {
-           "recording": "⏺",
-           "countdown": "⏳",
-           "idle": "📸"
-       },
-       "on-click": "wsr-waybar --toggle"
-   }
-   ```
-   > **Note:** For countdown display, `interval` must be set to `1`!
+### 2. Waybar Config
 
-   **Without blink animation:**
-   ```json
-   "exec": "wsr-waybar --no-blink"
-   ```
+```json
+"custom/wsr": {
+    "exec": "wsr-waybar",
+    "return-type": "json",
+    "interval": 2,
+    "format": "{icon}",
+    "format-icons": {
+        "recording": "⏺",
+        "idle": ""
+    },
+    "on-click": "wsr-waybar --toggle",
+    "signal": 8
+}
+```
 
-   **Available arguments:**
-   - `--show-countdown` — Shows the countdown in the module text
-   - `--no-blink` — Disables blink animation during recording
-   - `--toggle` — Starts/stops recording (for `on-click`)
-   - `--lang de|en` — Language for tooltips
+For countdown display, use `"exec": "wsr-waybar --show-countdown"` with `"interval": 1` and add `"countdown": ""` to `format-icons`.
 
-3. **Waybar Style (`style.css`):**
-   ```css
-   #custom-wsr.recording {
-       color: #ffffff;
-       background: #ff0000;
-       font-weight: bold;
-   }
-   #custom-wsr.blink {
-       animation: wsr-blink 0.5s infinite;
-   }
-   @keyframes wsr-blink {
-       50% { opacity: 0; }
-   }
-   #custom-wsr.countdown {
-       color: #ffcc00;
-   }
-   #custom-wsr.idle {
-       color: #ffffff;
-   }
-   ```
+**`wsr-waybar` arguments:**
 
-## Running Without Root (sudo)
+| Argument | Description |
+|---|---|
+| `--toggle` | Start/stop recording (for `on-click`) |
+| `--show-countdown` | Show countdown in module text (requires `interval: 1`) |
+| `--no-blink` | Disable blink animation during recording |
+| `--lang de\|en` | Tooltip language |
 
-To run WSR without `sudo`, your user needs access to the input devices.
+### 3. Waybar Style
 
-1. Create a udev rule:
-   ```bash
-   echo 'KERNEL=="event*", GROUP="input", MODE="0660"' | sudo tee /etc/udev/rules.d/99-input.rules
-   ```
-2. Add your user to the `input` group:
-   ```bash
-   sudo usermod -aG input $USER
-   ```
-3. Log out and log back in.
+```css
+#custom-wsr.recording {
+    color: #ffffff;
+    background: #ff0000;
+    font-weight: bold;
+}
+#custom-wsr.blink {
+    animation: wsr-blink 0.5s infinite;
+}
+@keyframes wsr-blink {
+    50% { opacity: 0; }
+}
+#custom-wsr.countdown {
+    color: #ffcc00;
+}
+#custom-wsr.idle {
+    color: #ffffff;
+}
+```
+
+## Running Without Root
+
+Add your user to the `input` group and create a udev rule for `/dev/input/` access:
+
+```bash
+sudo usermod -aG input $USER
+echo 'KERNEL=="event*", GROUP="input", MODE="0660"' | sudo tee /etc/udev/rules.d/99-input.rules
+```
+
+Re-login for group changes to take effect.
 
 ## Development & Testing
 
